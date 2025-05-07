@@ -9,6 +9,7 @@ import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboard from "./pages/dashboard";
 import InterviewPage from "./pages/interview/[id]";
+import NewInterviewPage from "./pages/interview/new";
 import ResultsPage from "./pages/results/[id]";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/auth-context";
@@ -43,6 +44,11 @@ const AuthWrapper = () => {
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/interview/new" element={
+        <ProtectedRoute>
+          <NewInterviewPage />
         </ProtectedRoute>
       } />
       <Route path="/interview/:id" element={

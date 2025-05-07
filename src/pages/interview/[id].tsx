@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Mic, Video, VideoOff, MicOff, Send, Loader } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 
 const InterviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,13 +18,90 @@ const InterviewPage = () => {
   const [userResponse, setUserResponse] = useState('');
   const [conversation, setConversation] = useState<{ speaker: 'ai' | 'user'; text: string }[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [interviewComplete, setInterviewComplete] = useState(false);
+  const [questionsAsked, setQuestionsAsked] = useState(0);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  
+  // Initialize video when component loads
+  useEffect(() => {
+    if (isInProgress && isVideoEnabled) {
+      setupVideo();
+    }
+    
+    return () => {
+      // Clean up video stream when component unmounts
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [isInProgress, isVideoEnabled]);
+  
+  // Set up video stream
+  const setupVideo = async () => {
+    try {
+      if (videoRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: true, 
+          audio: isAudioEnabled 
+        });
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+        
+        toast({
+          title: "Camera connected",
+          description: "Your camera has been successfully connected.",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error('Error accessing camera or microphone:', error);
+      toast({
+        title: "Camera error",
+        description: "Could not access your camera. Please check permissions.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      setIsVideoEnabled(false);
+    }
+  };
+  
+  // Toggle video
+  const toggleVideo = async () => {
+    setIsVideoEnabled(!isVideoEnabled);
+    
+    if (!isVideoEnabled) {
+      // Turning video on
+      await setupVideo();
+    } else {
+      // Turning video off
+      if (streamRef.current) {
+        streamRef.current.getVideoTracks().forEach(track => track.stop());
+      }
+    }
+    
+    toast({
+      title: isVideoEnabled ? "Video disabled" : "Video enabled",
+      duration: 2000,
+    });
+  };
 
-  // Mock interview data
-  const interviewData = {
-    id: '1',
-    title: 'Senior Full-Stack Developer Interview',
-    role: 'Senior Full-Stack Developer',
-    type: 'technical',
+  // Toggle audio
+  const toggleAudio = () => {
+    setIsAudioEnabled(!isAudioEnabled);
+    
+    if (streamRef.current) {
+      streamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !isAudioEnabled;
+      });
+    }
+    
+    toast({
+      title: isAudioEnabled ? "Microphone muted" : "Microphone unmuted",
+      duration: 2000,
+    });
   };
 
   // Start the interview
@@ -32,34 +110,17 @@ const InterviewPage = () => {
     setConversation([
       { 
         speaker: 'ai', 
-        text: `Welcome to your mock interview for the ${interviewData.role} position. I'll be asking you a series of ${interviewData.type} questions. Let's get started.` 
+        text: `Welcome to your interview. I'll be asking you questions based on your profile and the job requirements. Let's get started.` 
       }
     ]);
     
     // Simulate first question after welcome message
     setTimeout(() => {
-      const firstQuestion = "Can you tell me about a challenging project you worked on and how you overcame obstacles?";
+      const firstQuestion = "Could you start by telling me about your background and experience relevant to this position?";
       setCurrentQuestion(firstQuestion);
       setConversation(prev => [...prev, { speaker: 'ai', text: firstQuestion }]);
+      setQuestionsAsked(1);
     }, 2000);
-  };
-
-  // Toggle video
-  const toggleVideo = () => {
-    setIsVideoEnabled(!isVideoEnabled);
-    toast({
-      title: isVideoEnabled ? 'Video disabled' : 'Video enabled',
-      duration: 2000,
-    });
-  };
-
-  // Toggle audio
-  const toggleAudio = () => {
-    setIsAudioEnabled(!isAudioEnabled);
-    toast({
-      title: isAudioEnabled ? 'Microphone muted' : 'Microphone unmuted',
-      duration: 2000,
-    });
   };
 
   // Submit response
@@ -77,17 +138,35 @@ const InterviewPage = () => {
     setTimeout(() => {
       setIsProcessing(false);
       
+      // Check if we should end the interview
+      if (questionsAsked >= 4) {
+        setFeedback("I'm analyzing your responses and preparing feedback. Let me summarize how you did in this interview...");
+        setConversation(prev => [...prev, { 
+          speaker: 'ai', 
+          text: "Thank you for your responses. That concludes our interview. I'm now preparing your feedback and results." 
+        }]);
+        
+        setTimeout(() => {
+          setInterviewComplete(true);
+        }, 3000);
+        
+        return;
+      }
+      
       // Mock next question from AI
       const nextQuestions = [
+        "Can you describe a challenging project you worked on and how you overcame obstacles?",
+        "How do you stay updated with the latest technologies and industry trends?",
+        "Tell me about a time when you had to meet a tight deadline. How did you manage your time?",
         "How do you handle disagreements with team members about technical decisions?",
-        "Describe your approach to debugging a complex issue in a production environment.",
-        "Can you explain a time when you had to make a difficult technical decision with limited information?",
-        "What's your experience with microservices architecture and what challenges did you face implementing it?"
+        "What's your experience with agile development methodologies?",
+        "How do you approach debugging complex issues in a production environment?",
       ];
       
-      const nextQuestion = nextQuestions[Math.floor(Math.random() * nextQuestions.length)];
+      const nextQuestion = nextQuestions[questionsAsked];
       setCurrentQuestion(nextQuestion);
       setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
+      setQuestionsAsked(questionsAsked + 1);
     }, 3000);
   };
 
@@ -99,10 +178,15 @@ const InterviewPage = () => {
       duration: 3000,
     });
     
-    // Redirect to results page (would use real navigation in production)
+    // Redirect to results page
     setTimeout(() => {
       window.location.href = `/results/${id}`;
     }, 3000);
+    
+    // Clean up video stream
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
   };
 
   return (
@@ -111,27 +195,30 @@ const InterviewPage = () => {
       
       <main className="flex-grow container px-4 py-8 md:px-6 flex flex-col">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">{interviewData.title}</h1>
-          <p className="text-gray-500">{interviewData.type === 'technical' ? 'Technical Interview' : 'Behavioral Interview'}</p>
+          <h1 className="text-2xl font-bold">Interview Session</h1>
+          <p className="text-gray-500">Your personalized interview is in progress</p>
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-grow">
           {/* Video feed column */}
           <div className="lg:col-span-2">
             <div className="bg-black rounded-lg overflow-hidden h-[400px] mb-4 relative">
-              {/* Video placeholder */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                {isVideoEnabled ? (
-                  <div className="text-white text-center">
-                    <p>Camera Feed</p>
-                    <p className="text-sm text-gray-400">(Webcam would display here in production)</p>
-                  </div>
-                ) : (
+              {/* Video feed */}
+              {isVideoEnabled ? (
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  muted 
+                  playsInline 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-white text-center">
                     <p>Camera Disabled</p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
               
               {/* Interview controls */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
@@ -168,7 +255,7 @@ const InterviewPage = () => {
               </div>
             </div>
             
-            {isInProgress && (
+            {isInProgress && !interviewComplete && (
               <div className="mt-4">
                 <Card>
                   <CardContent className="p-4">
@@ -181,27 +268,35 @@ const InterviewPage = () => {
                     <p className="text-gray-700">{currentQuestion || "Waiting for the interview to begin..."}</p>
                     
                     <div className="mt-6">
-                      <div className="flex space-x-2">
-                        <textarea 
-                          className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-interview-primary"
+                      <div className="flex flex-col space-y-2">
+                        <Textarea 
+                          className="min-h-[100px] p-3"
                           placeholder="Type your response here..."
-                          rows={3}
                           value={userResponse}
                           onChange={(e) => setUserResponse(e.target.value)}
-                          disabled={!isInProgress || isProcessing}
-                        ></textarea>
+                          disabled={!isInProgress || isProcessing || interviewComplete}
+                        />
                         <Button 
                           className="self-end bg-interview-primary hover:bg-interview-primary/90"
-                          disabled={!userResponse.trim() || isProcessing}
+                          disabled={!userResponse.trim() || isProcessing || interviewComplete}
                           onClick={submitResponse}
                         >
-                          <Send className="h-4 w-4" />
+                          {isProcessing ? (
+                            <>
+                              <Loader className="h-4 w-4 mr-2 animate-spin" />
+                              Processing...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              Send Response
+                            </>
+                          )}
                         </Button>
                       </div>
-                      {isProcessing && (
-                        <div className="mt-2 flex items-center text-sm text-gray-500">
-                          <Loader className="h-4 w-4 mr-2 animate-spin" />
-                          Processing your response...
+                      {feedback && (
+                        <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                          <p className="text-sm text-gray-600">{feedback}</p>
                         </div>
                       )}
                     </div>
@@ -225,7 +320,7 @@ const InterviewPage = () => {
                   conversation.map((message, index) => (
                     <div key={index} className={`flex ${message.speaker === 'ai' ? 'justify-start' : 'justify-end'}`}>
                       <div 
-                        className={`max-w-[80%] rounded-lg p-3 ${
+                        className={`max-w-[90%] rounded-lg p-3 ${
                           message.speaker === 'ai' 
                             ? 'bg-interview-light text-gray-700' 
                             : 'bg-interview-primary text-white'
@@ -236,7 +331,7 @@ const InterviewPage = () => {
                             {message.speaker === 'ai' ? 'AI Interviewer' : 'You'}
                           </span>
                         </div>
-                        <p className="text-sm">{message.text}</p>
+                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                       </div>
                     </div>
                   ))
