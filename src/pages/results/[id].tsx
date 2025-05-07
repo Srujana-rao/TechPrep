@@ -5,7 +5,7 @@ import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart } from '@/components/ui/chart';
+import { BarChart } from '@/components/ui/bar-chart';
 import { BarChart2, MessagesSquare, ScrollText, Download } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/button-link';
 
