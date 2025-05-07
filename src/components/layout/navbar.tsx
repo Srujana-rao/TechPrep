@@ -6,9 +6,16 @@ import { ButtonLink } from '@/components/ui/button-link';
 import { Mic, Menu, X, User } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
 
-export const Navbar = () => {
+interface NavbarProps {
+  isAuthenticated?: boolean;
+}
+
+export const Navbar = ({ isAuthenticated }: NavbarProps = {}) => {
   const { currentUser, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Use the prop if provided, otherwise use the currentUser from context
+  const isLoggedIn = isAuthenticated !== undefined ? isAuthenticated : !!currentUser;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -28,7 +35,7 @@ export const Navbar = () => {
             Home
           </Link>
           
-          {currentUser ? (
+          {isLoggedIn ? (
             <>
               <ButtonLink href="/dashboard" variant="outline">
                 Dashboard
@@ -38,7 +45,7 @@ export const Navbar = () => {
               </Button>
               <div className="flex items-center space-x-1">
                 <User className="h-4 w-4" />
-                <span className="text-sm font-medium">{currentUser.email?.split('@')[0]}</span>
+                <span className="text-sm font-medium">{currentUser?.email?.split('@')[0]}</span>
               </div>
             </>
           ) : (
@@ -67,7 +74,7 @@ export const Navbar = () => {
               Home
             </Link>
             
-            {currentUser ? (
+            {isLoggedIn ? (
               <>
                 <Link to="/dashboard" className="text-gray-700 hover:text-interview-primary transition-colors">
                   Dashboard
@@ -77,7 +84,7 @@ export const Navbar = () => {
                 </Button>
                 <div className="flex items-center space-x-1">
                   <User className="h-4 w-4" />
-                  <span className="text-sm font-medium">{currentUser.email?.split('@')[0]}</span>
+                  <span className="text-sm font-medium">{currentUser?.email?.split('@')[0]}</span>
                 </div>
               </>
             ) : (
