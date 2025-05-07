@@ -3,14 +3,11 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from '@/components/ui/button-link';
-import { Mic, Menu, X } from 'lucide-react';
+import { Mic, Menu, X, User } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 
-interface NavbarProps {
-  isAuthenticated?: boolean;
-  onLogout?: () => void;
-}
-
-export const Navbar = ({ isAuthenticated = false, onLogout }: NavbarProps) => {
+export const Navbar = () => {
+  const { currentUser, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -30,21 +27,19 @@ export const Navbar = ({ isAuthenticated = false, onLogout }: NavbarProps) => {
           <Link to="/" className="text-gray-700 hover:text-interview-primary transition-colors">
             Home
           </Link>
-          <Link to="/features" className="text-gray-700 hover:text-interview-primary transition-colors">
-            Features
-          </Link>
-          <Link to="/pricing" className="text-gray-700 hover:text-interview-primary transition-colors">
-            Pricing
-          </Link>
           
-          {isAuthenticated ? (
+          {currentUser ? (
             <>
               <ButtonLink href="/dashboard" variant="outline">
                 Dashboard
               </ButtonLink>
-              <Button onClick={onLogout} variant="ghost">
+              <Button onClick={logout} variant="ghost">
                 Logout
               </Button>
+              <div className="flex items-center space-x-1">
+                <User className="h-4 w-4" />
+                <span className="text-sm font-medium">{currentUser.email?.split('@')[0]}</span>
+              </div>
             </>
           ) : (
             <>
@@ -71,21 +66,19 @@ export const Navbar = ({ isAuthenticated = false, onLogout }: NavbarProps) => {
             <Link to="/" className="text-gray-700 hover:text-interview-primary transition-colors">
               Home
             </Link>
-            <Link to="/features" className="text-gray-700 hover:text-interview-primary transition-colors">
-              Features
-            </Link>
-            <Link to="/pricing" className="text-gray-700 hover:text-interview-primary transition-colors">
-              Pricing
-            </Link>
             
-            {isAuthenticated ? (
+            {currentUser ? (
               <>
                 <Link to="/dashboard" className="text-gray-700 hover:text-interview-primary transition-colors">
                   Dashboard
                 </Link>
-                <Button onClick={onLogout} variant="ghost" className="justify-start px-0">
+                <Button onClick={logout} variant="ghost" className="justify-start px-0">
                   Logout
                 </Button>
+                <div className="flex items-center space-x-1">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">{currentUser.email?.split('@')[0]}</span>
+                </div>
               </>
             ) : (
               <div className="flex flex-col space-y-2 pt-2">

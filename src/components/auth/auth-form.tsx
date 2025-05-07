@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -20,6 +20,7 @@ type AuthFormProps = {
   onLogin: (email: string, password: string) => Promise<void>;
   onSignup: (email: string, password: string, name: string) => Promise<void>;
   isLoading?: boolean;
+  defaultTab?: 'login' | 'signup';
 };
 
 const loginSchema = z.object({
@@ -35,9 +36,14 @@ const signupSchema = loginSchema.extend({
   path: ["confirmPassword"],
 });
 
-export const AuthForm = ({ onLogin, onSignup, isLoading = false }: AuthFormProps) => {
-  const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+export const AuthForm = ({ onLogin, onSignup, isLoading = false, defaultTab = 'login' }: AuthFormProps) => {
+  const [activeTab, setActiveTab] = useState<'login' | 'signup'>(defaultTab);
   const { toast } = useToast();
+
+  // Update activeTab when defaultTab prop changes
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -86,7 +92,7 @@ export const AuthForm = ({ onLogin, onSignup, isLoading = false }: AuthFormProps
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-100">
       <Tabs 
-        defaultValue="login" 
+        defaultValue={defaultTab} 
         value={activeTab} 
         onValueChange={(value) => setActiveTab(value as 'login' | 'signup')}
         className="w-full"
