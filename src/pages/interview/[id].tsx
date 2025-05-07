@@ -4,9 +4,10 @@ import { useParams } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, Video, VideoOff, MicOff, Send, Loader } from 'lucide-react';
+import { Mic, Video, VideoOff, MicOff, Send, Loader, Volume2, Volume, VolumeX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
 
 const InterviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,14 +22,25 @@ const InterviewPage = () => {
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [questionsAsked, setQuestionsAsked] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
   
-  // Initialize video when component loads
+  // Initialize video and audio when component loads
   useEffect(() => {
-    if (isInProgress && isVideoEnabled) {
-      setupVideo();
+    if (isInProgress) {
+      if (isVideoEnabled) {
+        setupVideo();
+      }
+      if (isAudioEnabled) {
+        setupAudioAnalyser();
+      }
     }
     
     return () => {
@@ -36,8 +48,17 @@ const InterviewPage = () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach(track => track.stop());
       }
+      
+      // Clean up audio analyser
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
     };
-  }, [isInProgress, isVideoEnabled]);
+  }, [isInProgress, isVideoEnabled, isAudioEnabled]);
   
   // Set up video stream
   const setupVideo = async () => {
@@ -66,6 +87,74 @@ const InterviewPage = () => {
       });
       setIsVideoEnabled(false);
     }
+  };
+  
+  // Set up audio analyser for visualization
+  const setupAudioAnalyser = async () => {
+    try {
+      if (!streamRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: true 
+        });
+        streamRef.current = stream;
+      }
+      
+      // Create audio context and analyser
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 256;
+      
+      // Connect audio source to analyser
+      const source = audioContextRef.current.createMediaStreamSource(streamRef.current);
+      source.connect(analyserRef.current);
+      
+      // Start analyzing audio
+      updateAudioLevel();
+      
+      toast({
+        title: "Microphone connected",
+        description: "Your microphone has been successfully connected.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error setting up audio analyser:', error);
+      toast({
+        title: "Microphone error",
+        description: "Could not access your microphone. Please check permissions.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      setIsAudioEnabled(false);
+    }
+  };
+  
+  // Update audio level visualization
+  const updateAudioLevel = () => {
+    if (!analyserRef.current) return;
+    
+    const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+    analyserRef.current.getByteFrequencyData(dataArray);
+    
+    // Calculate audio level (average of frequencies)
+    const average = dataArray.reduce((acc, val) => acc + val, 0) / dataArray.length;
+    const normalizedLevel = Math.min(100, Math.max(0, average * 2)); // Scale to 0-100
+    
+    setAudioLevel(normalizedLevel);
+    
+    // If sound is detected above threshold, set isListening to true
+    const THRESHOLD = 15; // Adjust based on testing
+    if (normalizedLevel > THRESHOLD) {
+      setIsListening(true);
+      // Reset listening state after a delay if no sound is detected
+      setTimeout(() => {
+        if (normalizedLevel <= THRESHOLD) {
+          setIsListening(false);
+        }
+      }, 300);
+    }
+    
+    // Continue analyzing audio
+    animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
   };
   
   // Toggle video
@@ -98,6 +187,19 @@ const InterviewPage = () => {
       });
     }
     
+    if (!isAudioEnabled) {
+      // Turning audio on
+      setupAudioAnalyser();
+    } else {
+      // Turning audio off
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      setAudioLevel(0);
+      setIsListening(false);
+    }
+    
     toast({
       title: isAudioEnabled ? "Microphone muted" : "Microphone unmuted",
       duration: 2000,
@@ -114,13 +216,41 @@ const InterviewPage = () => {
       }
     ]);
     
+    // Simulate AI speaking
+    setIsSpeaking(true);
+    
     // Simulate first question after welcome message
     setTimeout(() => {
       const firstQuestion = "Could you start by telling me about your background and experience relevant to this position?";
       setCurrentQuestion(firstQuestion);
       setConversation(prev => [...prev, { speaker: 'ai', text: firstQuestion }]);
       setQuestionsAsked(1);
-    }, 2000);
+      setIsSpeaking(false);
+    }, 3000);
+  };
+
+  // Simulate speech recognition for demo purposes
+  const simulateSpeechRecognition = () => {
+    if (!isListening || !isAudioEnabled) return;
+    
+    // In a real app, this would be replaced with actual speech-to-text
+    const possibleResponses = [
+      "I have 5 years of experience in frontend development with React and TypeScript.",
+      "My background includes working on large-scale web applications and team leadership.",
+      "I've worked extensively with modern JavaScript frameworks and responsive design.",
+      "I specialize in creating accessible user interfaces with strong performance optimization.",
+    ];
+    
+    const randomResponse = possibleResponses[Math.floor(Math.random() * possibleResponses.length)];
+    
+    // Set the recognized speech to the textarea
+    setUserResponse(prev => prev ? `${prev} ${randomResponse}` : randomResponse);
+    
+    toast({
+      title: "Speech recognized",
+      description: "Your speech has been converted to text.",
+      duration: 2000,
+    });
   };
 
   // Submit response
@@ -137,6 +267,7 @@ const InterviewPage = () => {
     // Simulate AI processing time
     setTimeout(() => {
       setIsProcessing(false);
+      setIsSpeaking(true);
       
       // Check if we should end the interview
       if (questionsAsked >= 4) {
@@ -147,6 +278,7 @@ const InterviewPage = () => {
         }]);
         
         setTimeout(() => {
+          setIsSpeaking(false);
           setInterviewComplete(true);
         }, 3000);
         
@@ -167,6 +299,11 @@ const InterviewPage = () => {
       setCurrentQuestion(nextQuestion);
       setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
       setQuestionsAsked(questionsAsked + 1);
+      
+      // End AI speaking after a delay
+      setTimeout(() => {
+        setIsSpeaking(false);
+      }, 2000);
     }, 3000);
   };
 
@@ -187,7 +324,34 @@ const InterviewPage = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
     }
+    
+    // Clean up audio analyser
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
   };
+
+  // Helper function to determine microphone icon based on state
+  const getMicIcon = () => {
+    if (!isAudioEnabled) {
+      return <MicOff />;
+    }
+    if (isListening) {
+      return <Mic className="text-green-500 animate-pulse" />;
+    }
+    return <Mic />;
+  };
+
+  // For demo purposes, allow simulating speech recognition on button click
+  useEffect(() => {
+    if (isListening && isInProgress && !isSpeaking && !interviewComplete) {
+      const timer = setTimeout(() => {
+        simulateSpeechRecognition();
+      }, 2000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isListening, isInProgress, isSpeaking, interviewComplete]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -220,6 +384,23 @@ const InterviewPage = () => {
                 </div>
               )}
               
+              {/* Audio level visualization */}
+              {isAudioEnabled && (
+                <div className="absolute bottom-20 left-4 right-4 bg-black/60 p-2 rounded-md flex items-center gap-2">
+                  {isListening ? (
+                    <Volume2 className="h-4 w-4 text-green-500 animate-pulse" />
+                  ) : (
+                    <Volume className="h-4 w-4 text-gray-400" />
+                  )}
+                  <Progress value={audioLevel} className="h-2" />
+                  {isSpeaking && (
+                    <div className="ml-auto px-2 py-1 bg-interview-primary text-white text-xs rounded-md animate-pulse">
+                      AI Speaking...
+                    </div>
+                  )}
+                </div>
+              )}
+              
               {/* Interview controls */}
               <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4">
                 <Button 
@@ -233,8 +414,9 @@ const InterviewPage = () => {
                   variant="secondary" 
                   size="icon"
                   onClick={toggleAudio}
+                  className={isListening ? "bg-green-100" : ""}
                 >
-                  {isAudioEnabled ? <Mic /> : <MicOff />}
+                  {getMicIcon()}
                 </Button>
                 
                 {isInProgress ? (
@@ -264,18 +446,30 @@ const InterviewPage = () => {
                         AI
                       </div>
                       <h3 className="font-medium">Current Question:</h3>
+                      {isSpeaking && (
+                        <span className="text-xs bg-interview-primary/20 text-interview-primary px-2 py-1 rounded-md animate-pulse">
+                          Speaking...
+                        </span>
+                      )}
                     </div>
                     <p className="text-gray-700">{currentQuestion || "Waiting for the interview to begin..."}</p>
                     
                     <div className="mt-6">
                       <div className="flex flex-col space-y-2">
-                        <Textarea 
-                          className="min-h-[100px] p-3"
-                          placeholder="Type your response here..."
-                          value={userResponse}
-                          onChange={(e) => setUserResponse(e.target.value)}
-                          disabled={!isInProgress || isProcessing || interviewComplete}
-                        />
+                        <div className="relative">
+                          <Textarea 
+                            className="min-h-[100px] p-3"
+                            placeholder="Type your response here or speak (audio input will appear here)..."
+                            value={userResponse}
+                            onChange={(e) => setUserResponse(e.target.value)}
+                            disabled={!isInProgress || isProcessing || interviewComplete}
+                          />
+                          {isListening && isAudioEnabled && (
+                            <div className="absolute right-3 top-3 bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs animate-pulse">
+                              Listening...
+                            </div>
+                          )}
+                        </div>
                         <Button 
                           className="self-end bg-interview-primary hover:bg-interview-primary/90"
                           disabled={!userResponse.trim() || isProcessing || interviewComplete}
@@ -330,6 +524,11 @@ const InterviewPage = () => {
                           <span className="font-semibold text-sm">
                             {message.speaker === 'ai' ? 'AI Interviewer' : 'You'}
                           </span>
+                          {message.speaker === 'ai' && index === conversation.length - 1 && isSpeaking && (
+                            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full animate-pulse">
+                              Speaking
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                       </div>
