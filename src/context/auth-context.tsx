@@ -10,6 +10,7 @@ interface AuthContextType {
   currentUser: User | null;
   session: Session | null;
   isLoading: boolean;
+  emailConfirmationRequired: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -23,6 +24,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [emailConfirmationRequired, setEmailConfirmationRequired] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -67,17 +69,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) {
-        throw error;
+        // Check specifically for email confirmation error
+        if (error.message.includes('Email not confirmed')) {
+          setEmailConfirmationRequired(true);
+          toast({
+            title: 'Email confirmation required',
+            description: 'Please check your inbox and confirm your email before logging in.',
+            variant: 'destructive',
+          });
+        } else {
+          throw error;
+        }
+      } else {
+        // Success message
+        toast({
+          title: 'Login successful',
+          description: `Welcome back!`,
+        });
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
       }
-      
-      // Success message
-      toast({
-        title: 'Login successful',
-        description: `Welcome back!`,
-      });
-      
-      // Navigate to dashboard
-      navigate('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
@@ -93,6 +105,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Signup function using Supabase
   const signup = async (email: string, password: string, name: string) => {
     setIsLoading(true);
+    setEmailConfirmationRequired(false);
     
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -109,14 +122,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
       
-      // Success message
-      toast({
-        title: 'Account created',
-        description: `Welcome to InterviewAI, ${name}!`,
-      });
-      
-      // Navigate to dashboard
-      navigate('/dashboard');
+      // Check if email confirmation is required
+      if (!data.session) {
+        setEmailConfirmationRequired(true);
+        toast({
+          title: 'Verification email sent',
+          description: `Please check your inbox and confirm your email before logging in.`,
+        });
+      } else {
+        // Success message - user is auto-confirmed
+        toast({
+          title: 'Account created',
+          description: `Welcome to InterviewAI, ${name}!`,
+        });
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error('Signup error:', error);
       toast({
@@ -164,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     currentUser,
     session,
     isLoading,
+    emailConfirmationRequired,
     login,
     signup,
     logout,
