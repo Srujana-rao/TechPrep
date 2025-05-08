@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,63 +9,194 @@ import { BarChart } from '@/components/ui/bar-chart';
 import { BarChart2, MessagesSquare, ScrollText, Download, FileText } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 const ResultsPage = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('summary');
 
-  // Mock data for results - in a real app, this would come from the database
-  const resultData = {
+  // Data passed from the interview page or mock data if none was passed
+  const conversationData = location.state?.conversation || [];
+  const overallScoreData = location.state?.overallScore || 7.5; // Default score if none provided
+  const responseQualityData = location.state?.responseQuality || {};
+  const questionsAskedData = location.state?.questionsAsked || 5;
+
+  // Generate result data based on the actual interview
+  const [resultData, setResultData] = useState({
     title: 'Frontend Developer Interview',
-    date: 'May 7, 2025',
-    duration: '28 minutes',
+    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    duration: `${Math.floor(Math.random() * 20) + 15} minutes`, // Mock duration
     role: 'Senior Frontend Developer',
     scores: {
-      technicalKnowledge: 8.5,
-      communication: 9.0,
-      problemSolving: 8.0,
-      culturalFit: 9.2,
-      confidence: 7.5,
-      questionQuality: 8.8
+      technicalKnowledge: 0,
+      communication: 0,
+      problemSolving: 0,
+      culturalFit: 0,
+      confidence: 0,
+      questionQuality: 0
     },
-    overallScore: 8.5,
-    strengths: [
-      'Strong technical knowledge of React and TypeScript',
-      'Excellent communication skills and articulation of complex concepts',
-      'Good understanding of modern frontend architecture',
-      'Positive attitude and cultural alignment'
-    ],
-    improvements: [
-      'Could provide more specific examples from past projects',
-      'Consider discussing trade-offs in technical decisions more explicitly',
-      'More emphasis on testing strategies would strengthen responses',
-      'Elaborate more on collaborative experiences in team settings'
-    ],
-    keyInsights: [
-      'You demonstrated strong problem-solving capabilities when discussing system architecture',
-      'Your communication style is clear and concise, a valuable trait for technical roles',
-      'You showed good understanding of state management approaches',
-      'Consider preparing more specific examples that showcase your achievements'
-    ],
-    transcript: [
-      { 
-        speaker: 'ai', 
-        text: 'Could you start by telling me about your background and experience relevant to this position?',
-        feedback: 'Strong introduction highlighting relevant experience'
-      },
-      { 
-        speaker: 'user', 
-        text: 'I have over 5 years of experience in frontend development, with a focus on React and TypeScript for the last 3 years. I\'ve worked on large-scale applications at Company X where I led the migration from a legacy codebase to a modern React architecture. Prior to that, I was at Startup Y where I built responsive web applications and contributed to their component library. I have a strong focus on performance optimization and accessible UI design.',
-        feedback: null
-      },
-      { 
-        speaker: 'ai', 
-        text: 'Can you describe a challenging project you worked on and how you overcame obstacles?',
-        feedback: 'Good explanation but could include more metrics and specific outcomes'
-      },
-      // More transcript entries would go here
-    ]
-  };
+    overallScore: 0,
+    strengths: [],
+    improvements: [],
+    keyInsights: [],
+    transcript: []
+  });
+
+  // Generate report when component mounts or interview data changes
+  useEffect(() => {
+    // Generate scores based on response quality
+    const generateScores = () => {
+      // Default base scores
+      const baseScores = {
+        technicalKnowledge: 6 + Math.random() * 2,
+        communication: 6 + Math.random() * 2,
+        problemSolving: 6 + Math.random() * 2,
+        culturalFit: 6 + Math.random() * 2,
+        confidence: 6 + Math.random() * 2,
+        questionQuality: 6 + Math.random() * 2
+      };
+      
+      // Adjust scores based on response quality
+      Object.values(responseQualityData).forEach(quality => {
+        if (quality === 'good') {
+          baseScores.technicalKnowledge += 0.5;
+          baseScores.communication += 0.4;
+          baseScores.problemSolving += 0.3;
+        } else if (quality === 'fair') {
+          baseScores.technicalKnowledge += 0.2;
+          baseScores.communication += 0.1;
+        } else {
+          baseScores.technicalKnowledge -= 0.2;
+          baseScores.problemSolving -= 0.1;
+        }
+      });
+      
+      // Cap scores between 0-10
+      Object.keys(baseScores).forEach(key => {
+        baseScores[key as keyof typeof baseScores] = Math.min(10, Math.max(0, baseScores[key as keyof typeof baseScores]));
+      });
+      
+      return baseScores;
+    };
+
+    // Generate strengths based on highest scores
+    const generateStrengths = (scores: any) => {
+      const strengths = [];
+      if (scores.technicalKnowledge > 7) strengths.push('Strong technical knowledge demonstrated throughout the interview');
+      if (scores.communication > 7) strengths.push('Excellent communication skills and articulation of concepts');
+      if (scores.problemSolving > 7) strengths.push('Good problem-solving approach with structured thinking');
+      if (scores.culturalFit > 7) strengths.push('Positive attitude and cultural alignment');
+      if (scores.confidence > 7) strengths.push('Confident presentation of ideas and experiences');
+      
+      // Add generic strengths if needed to have at least 3
+      const genericStrengths = [
+        'Demonstrated ability to explain complex concepts clearly',
+        'Showed enthusiasm for the role and company',
+        'Provided specific examples from past experiences',
+        'Displayed good listening skills during the interview'
+      ];
+      
+      while (strengths.length < 3 && genericStrengths.length > 0) {
+        strengths.push(genericStrengths.shift()!);
+      }
+      
+      return strengths;
+    };
+
+    // Generate improvement areas based on lowest scores
+    const generateImprovements = (scores: any) => {
+      const improvements = [];
+      if (scores.technicalKnowledge < 8) improvements.push('Consider expanding on technical details in your responses');
+      if (scores.communication < 8) improvements.push('Try to be more concise when explaining complex concepts');
+      if (scores.problemSolving < 8) improvements.push('Practice breaking down problems into smaller parts');
+      if (scores.culturalFit < 8) improvements.push('Share more examples of team collaboration experiences');
+      if (scores.confidence < 8) improvements.push('Work on expressing your ideas with more confidence');
+      
+      // Add generic improvements if needed to have at least 3
+      const genericImprovements = [
+        'Provide more specific examples from past projects',
+        'Consider discussing trade-offs in technical decisions more explicitly',
+        'More emphasis on testing strategies would strengthen responses',
+        'Elaborate more on collaborative experiences in team settings'
+      ];
+      
+      while (improvements.length < 3 && genericImprovements.length > 0) {
+        improvements.push(genericImprovements.shift()!);
+      }
+      
+      return improvements;
+    };
+
+    // Generate key insights
+    const generateInsights = (scores: any, strengths: string[], improvements: string[]) => {
+      const insights = [];
+      
+      // Add one strength-based insight
+      if (strengths.length > 0) {
+        insights.push(`You demonstrated ${
+          scores.technicalKnowledge > scores.communication ? 
+            'strong technical knowledge' : 
+            'excellent communication skills'
+        } throughout the interview.`);
+      }
+      
+      // Add one improvement-based insight
+      if (improvements.length > 0) {
+        insights.push(`Focus on ${
+          scores.technicalKnowledge < scores.communication ? 
+            'strengthening your technical explanations' : 
+            'improving your communication clarity'
+        } to enhance your interview performance.`);
+      }
+      
+      // Add generic insights
+      insights.push(`Your overall performance indicates you are ${
+        overallScoreData >= 8 ? 'well-prepared' : 
+        overallScoreData >= 6 ? 'reasonably prepared' : 
+        'still developing skills needed'
+      } for this role.`);
+      
+      insights.push('Practicing more mock interviews will help you refine your responses further.');
+      
+      return insights;
+    };
+
+    // Generate transcript from the conversation
+    const generateTranscript = () => {
+      return conversationData.map((message: any) => ({
+        speaker: message.speaker,
+        text: message.text,
+        feedback: message.quality ? 
+          message.quality === 'good' ? 'Strong answer with good examples' :
+          message.quality === 'fair' ? 'Adequate response but could be more specific' :
+          'Response needs more detail and examples' : null
+      }));
+    };
+
+    // Generate the full result data
+    const generateResultData = () => {
+      const scores = generateScores();
+      const strengths = generateStrengths(scores);
+      const improvements = generateImprovements(scores);
+      const insights = generateInsights(scores, strengths, improvements);
+      const transcript = generateTranscript();
+      
+      setResultData({
+        ...resultData,
+        scores,
+        overallScore: overallScoreData,
+        strengths,
+        improvements,
+        keyInsights: insights,
+        transcript
+      });
+    };
+
+    generateResultData();
+  }, [conversationData, overallScoreData, responseQualityData]);
 
   // Prepare data for charts
   const scoreData = [
@@ -88,6 +219,18 @@ const ResultsPage = () => {
     }
   };
 
+  // Handle download report
+  const handleDownloadReport = () => {
+    toast({
+      title: "Report Downloaded",
+      description: "Your interview report has been downloaded successfully.",
+      duration: 3000,
+    });
+    
+    // In a real app, this would generate and download a PDF report
+    // For now, we'll just show a toast notification
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar isAuthenticated={true} />
@@ -103,7 +246,10 @@ const ResultsPage = () => {
             <ButtonLink href="/dashboard" variant="outline">
               Back to Dashboard
             </ButtonLink>
-            <Button className="bg-interview-primary hover:bg-interview-primary/90">
+            <Button 
+              className="bg-interview-primary hover:bg-interview-primary/90"
+              onClick={handleDownloadReport}
+            >
               <Download className="mr-2 h-4 w-4" />
               Download Report
             </Button>
@@ -119,7 +265,7 @@ const ResultsPage = () => {
             <CardContent>
               <div className="flex items-center">
                 <div className="w-24 h-24 rounded-full bg-interview-light flex items-center justify-center mr-6">
-                  <span className="text-3xl font-bold text-interview-primary">{resultData.overallScore}/10</span>
+                  <span className="text-3xl font-bold text-interview-primary">{resultData.overallScore.toFixed(1)}/10</span>
                 </div>
                 <div>
                   <p className="text-lg font-medium mb-1">
@@ -153,7 +299,7 @@ const ResultsPage = () => {
                   index="name"
                   categories={['score']}
                   colors={['#6E59A5']}
-                  valueFormatter={(value: number) => `${value}/10`}
+                  valueFormatter={(value: number) => `${value.toFixed(1)}/10`}
                   yAxisWidth={40}
                   showLegend={false}
                 />
@@ -279,38 +425,62 @@ const ResultsPage = () => {
               <CardContent>
                 <div className="space-y-8">
                   <div>
-                    <h3 className="font-semibold text-lg mb-3">Technical Knowledge ({resultData.scores.technicalKnowledge}/10)</h3>
-                    <p className="mb-2">You demonstrated solid technical knowledge with good understanding of frontend frameworks and architectures. Your explanations of React concepts were particularly strong.</p>
+                    <h3 className="font-semibold text-lg mb-3">Technical Knowledge ({resultData.scores.technicalKnowledge.toFixed(1)}/10)</h3>
+                    <p className="mb-2">
+                      {resultData.scores.technicalKnowledge >= 8 ? 
+                        "You demonstrated excellent technical knowledge with well-structured explanations of concepts." :
+                        resultData.scores.technicalKnowledge >= 6 ?
+                        "You showed good technical understanding but could expand on some concepts more thoroughly." :
+                        "Your technical knowledge responses need more depth and specific examples."}
+                    </p>
                     <h4 className="font-medium mt-4">Strengths:</h4>
                     <ul className="list-disc list-inside pl-4">
-                      <li>Deep understanding of React ecosystem</li>
-                      <li>Good knowledge of state management approaches</li>
-                      <li>Clear explanations of technical concepts</li>
+                      <li>
+                        {resultData.scores.technicalKnowledge >= 7 ? "Clear explanations of technical concepts" : "Basic understanding of key concepts"}
+                      </li>
+                      <li>
+                        {resultData.scores.technicalKnowledge >= 7 ? "Good knowledge of relevant technologies" : "Familiar with industry terminology"}
+                      </li>
                     </ul>
                     <h4 className="font-medium mt-4">Areas for improvement:</h4>
                     <ul className="list-disc list-inside pl-4">
-                      <li>Expand on testing methodologies</li>
-                      <li>More detailed examples of performance optimizations</li>
+                      <li>
+                        {resultData.scores.technicalKnowledge >= 8 ? "Further detail on advanced concepts" : "Deepen knowledge of fundamental principles"}
+                      </li>
+                      <li>
+                        {resultData.scores.technicalKnowledge >= 8 ? "More examples of practical applications" : "Practice explaining complex topics clearly"}
+                      </li>
                     </ul>
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold text-lg mb-3">Communication ({resultData.scores.communication}/10)</h3>
-                    <p className="mb-2">Your communication skills were excellent. You articulated complex ideas clearly and maintained good conversational flow throughout the interview.</p>
+                    <h3 className="font-semibold text-lg mb-3">Communication ({resultData.scores.communication.toFixed(1)}/10)</h3>
+                    <p className="mb-2">
+                      {resultData.scores.communication >= 8 ? 
+                        "Your communication skills were excellent. You articulated complex ideas clearly and maintained good conversational flow." :
+                        resultData.scores.communication >= 6 ?
+                        "You communicated your ideas reasonably well but could improve clarity and structure." :
+                        "Your communication needs improvement, focusing on clearer expression and better structure."}
+                    </p>
                     <h4 className="font-medium mt-4">Strengths:</h4>
                     <ul className="list-disc list-inside pl-4">
-                      <li>Clear and concise explanations</li>
-                      <li>Well-structured responses</li>
-                      <li>Good use of technical terminology without jargon overload</li>
+                      <li>
+                        {resultData.scores.communication >= 7 ? "Clear and concise explanations" : "Basic communication of ideas"}
+                      </li>
+                      <li>
+                        {resultData.scores.communication >= 7 ? "Good response structure" : "Attempts to organize thoughts"}
+                      </li>
                     </ul>
                     <h4 className="font-medium mt-4">Areas for improvement:</h4>
                     <ul className="list-disc list-inside pl-4">
-                      <li>Consider using more specific examples to illustrate points</li>
-                      <li>Slightly more elaboration on some technical concepts would be beneficial</li>
+                      <li>
+                        {resultData.scores.communication >= 8 ? "More specific examples to illustrate points" : "Structure responses with clearer beginning, middle, and end"}
+                      </li>
+                      <li>
+                        {resultData.scores.communication >= 8 ? "Slightly more elaboration on technical concepts" : "Practice explaining concepts using simpler language"}
+                      </li>
                     </ul>
                   </div>
-                  
-                  {/* More sections would follow */}
                 </div>
               </CardContent>
             </Card>
@@ -334,10 +504,15 @@ const ResultsPage = () => {
                         </p>
                       </li>
                       <li>
-                        <span className="font-medium">Practice discussing trade-offs</span>
+                        <span className="font-medium">
+                          {resultData.scores.technicalKnowledge < resultData.scores.communication ? 
+                            "Strengthen technical explanations" : 
+                            "Improve communication clarity"}
+                        </span>
                         <p className="text-gray-600 mt-1">
-                          Prepare to explain the pros and cons of different technical approaches for common 
-                          frontend scenarios like state management, rendering strategies, and performance optimization.
+                          {resultData.scores.technicalKnowledge < resultData.scores.communication ? 
+                            "Focus on explaining technical concepts clearly with examples and trade-offs." : 
+                            "Practice expressing complex ideas in simpler terms with clear structure."}
                         </p>
                       </li>
                     </ul>

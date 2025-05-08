@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,13 +11,18 @@ import { Progress } from '@/components/ui/progress';
 
 const InterviewPage = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [isVideoEnabled, setIsVideoEnabled] = useState(true);
   const [isAudioEnabled, setIsAudioEnabled] = useState(true);
   const [isInProgress, setIsInProgress] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<string | null>(null);
   const [userResponse, setUserResponse] = useState('');
-  const [conversation, setConversation] = useState<{ speaker: 'ai' | 'user'; text: string }[]>([]);
+  const [conversation, setConversation] = useState<{ 
+    speaker: 'ai' | 'user'; 
+    text: string;
+    quality?: 'good' | 'fair' | 'needs_improvement' | null;
+  }[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [interviewComplete, setInterviewComplete] = useState(false);
   const [questionsAsked, setQuestionsAsked] = useState(0);
@@ -25,13 +30,17 @@ const InterviewPage = () => {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [responseQuality, setResponseQuality] = useState<Record<number, 'good' | 'fair' | 'needs_improvement'>>({});
+  const [overallScore, setOverallScore] = useState(0);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>('');
+
   // Initialize video and audio when component loads
   useEffect(() => {
     if (isInProgress) {
@@ -40,6 +49,7 @@ const InterviewPage = () => {
       }
       if (isAudioEnabled) {
         setupAudioAnalyser();
+        setupSpeechRecognition();
       }
     }
     
@@ -56,6 +66,11 @@ const InterviewPage = () => {
       
       if (audioContextRef.current) {
         audioContextRef.current.close();
+      }
+      
+      // Stop speech recognition
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
     };
   }, [isInProgress, isVideoEnabled, isAudioEnabled]);
@@ -87,6 +102,56 @@ const InterviewPage = () => {
       });
       setIsVideoEnabled(false);
     }
+  };
+  
+  // Set up speech recognition
+  const setupSpeechRecognition = () => {
+    // Check if the browser supports the Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      toast({
+        title: "Speech recognition not supported",
+        description: "Your browser doesn't support speech recognition. Please try a different browser.",
+        variant: "destructive",
+        duration: 5000,
+      });
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    recognition.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+      }
+      
+      if (transcript.trim()) {
+        transcriptRef.current = transcript;
+        setUserResponse(transcript);
+      }
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      
+      toast({
+        title: "Speech recognition error",
+        description: `Error: ${event.error}`,
+        variant: "destructive",
+        duration: 5000,
+      });
+    };
+    
+    recognition.start();
   };
   
   // Set up audio analyser for visualization
@@ -190,10 +255,15 @@ const InterviewPage = () => {
     if (!isAudioEnabled) {
       // Turning audio on
       setupAudioAnalyser();
+      setupSpeechRecognition();
     } else {
       // Turning audio off
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
       }
       
       setAudioLevel(0);
@@ -229,40 +299,56 @@ const InterviewPage = () => {
     }, 3000);
   };
 
-  // Simulate speech recognition for demo purposes
-  const simulateSpeechRecognition = () => {
-    if (!isListening || !isAudioEnabled) return;
-    
-    // In a real app, this would be replaced with actual speech-to-text
-    const possibleResponses = [
-      "I have 5 years of experience in frontend development with React and TypeScript.",
-      "My background includes working on large-scale web applications and team leadership.",
-      "I've worked extensively with modern JavaScript frameworks and responsive design.",
-      "I specialize in creating accessible user interfaces with strong performance optimization.",
-    ];
-    
-    const randomResponse = possibleResponses[Math.floor(Math.random() * possibleResponses.length)];
-    
-    // Set the recognized speech to the textarea
-    setUserResponse(prev => prev ? `${prev} ${randomResponse}` : randomResponse);
-    
-    toast({
-      title: "Speech recognized",
-      description: "Your speech has been converted to text.",
-      duration: 2000,
-    });
-  };
+  // Reset transcript when a new question is asked
+  useEffect(() => {
+    if (currentQuestion) {
+      transcriptRef.current = '';
+      setUserResponse('');
+    }
+  }, [currentQuestion]);
 
   // Submit response
   const submitResponse = () => {
     if (!userResponse.trim()) return;
     
     // Add user response to conversation
+    const currentQuestionIndex = questionsAsked;
     setConversation(prev => [...prev, { speaker: 'user', text: userResponse }]);
     setIsProcessing(true);
     
+    // Evaluate response quality - this would be handled by AI in a real app
+    const evaluateResponse = () => {
+      // This is a simple simulation - in a real app, this would use NLP/AI
+      const keywords = [
+        'experience', 'skills', 'projects', 'react', 'javascript', 'teamwork',
+        'problem solving', 'communication', 'challenges', 'leadership'
+      ];
+      
+      const lowerCaseResponse = userResponse.toLowerCase();
+      const matchedKeywords = keywords.filter(keyword => 
+        lowerCaseResponse.includes(keyword.toLowerCase())
+      );
+      
+      let quality: 'good' | 'fair' | 'needs_improvement';
+      if (matchedKeywords.length >= 3) {
+        quality = 'good';
+      } else if (matchedKeywords.length >= 1) {
+        quality = 'fair';
+      } else {
+        quality = 'needs_improvement';
+      }
+      
+      // Store the quality for this question
+      setResponseQuality(prev => ({...prev, [currentQuestionIndex]: quality}));
+      
+      return quality;
+    };
+    
+    const quality = evaluateResponse();
+    
     // Clear response field
     setUserResponse('');
+    transcriptRef.current = '';
     
     // Simulate AI processing time
     setTimeout(() => {
@@ -271,6 +357,16 @@ const InterviewPage = () => {
       
       // Check if we should end the interview
       if (questionsAsked >= 4) {
+        // Calculate overall score based on response qualities
+        const qualityValues = Object.values(responseQuality);
+        const score = qualityValues.reduce((acc, quality) => {
+          if (quality === 'good') return acc + 9;
+          if (quality === 'fair') return acc + 7;
+          return acc + 5;
+        }, 0) / qualityValues.length;
+        
+        setOverallScore(score);
+        
         setFeedback("I'm analyzing your responses and preparing feedback. Let me summarize how you did in this interview...");
         setConversation(prev => [...prev, { 
           speaker: 'ai', 
@@ -285,6 +381,24 @@ const InterviewPage = () => {
         return;
       }
       
+      // Generate AI feedback based on quality
+      const generateFeedback = (quality: string) => {
+        if (quality === 'good') {
+          return "That's a good answer. You provided specific examples and demonstrated your knowledge.";
+        } else if (quality === 'fair') {
+          return "That's a reasonable response, but consider adding more specific examples from your experience.";
+        } else {
+          return "Try to elaborate more on your answer and include specific examples from your past experience.";
+        }
+      };
+      
+      // Add AI feedback to conversation
+      setConversation(prev => [...prev, { 
+        speaker: 'ai', 
+        text: generateFeedback(quality),
+        quality 
+      }]);
+      
       // Mock next question from AI
       const nextQuestions = [
         "Can you describe a challenging project you worked on and how you overcame obstacles?",
@@ -295,29 +409,50 @@ const InterviewPage = () => {
         "How do you approach debugging complex issues in a production environment?",
       ];
       
-      const nextQuestion = nextQuestions[questionsAsked];
-      setCurrentQuestion(nextQuestion);
-      setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
-      setQuestionsAsked(questionsAsked + 1);
-      
-      // End AI speaking after a delay
       setTimeout(() => {
-        setIsSpeaking(false);
+        const nextQuestion = nextQuestions[questionsAsked];
+        setCurrentQuestion(nextQuestion);
+        setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
+        setQuestionsAsked(questionsAsked + 1);
+        
+        // End AI speaking after a delay
+        setTimeout(() => {
+          setIsSpeaking(false);
+        }, 2000);
       }, 2000);
     }, 3000);
   };
 
   // End interview
   const endInterview = () => {
+    // Calculate overall score based on response qualities
+    const qualityValues = Object.values(responseQuality);
+    const score = qualityValues.length > 0 
+      ? qualityValues.reduce((acc, quality) => {
+          if (quality === 'good') return acc + 9;
+          if (quality === 'fair') return acc + 7;
+          return acc + 5;
+        }, 0) / qualityValues.length
+      : 5; // Default score if no responses
+    
+    setOverallScore(score);
+    
     toast({
       title: 'Interview Complete',
       description: 'Generating your feedback report...',
       duration: 3000,
     });
     
-    // Redirect to results page
+    // Redirect to results page with data
     setTimeout(() => {
-      window.location.href = `/results/${id}`;
+      navigate(`/results/${id}`, { 
+        state: { 
+          conversation: conversation,
+          overallScore: score,
+          responseQuality: responseQuality,
+          questionsAsked: questionsAsked
+        } 
+      });
     }, 3000);
     
     // Clean up video stream
@@ -328,6 +463,11 @@ const InterviewPage = () => {
     // Clean up audio analyser
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+    }
+    
+    // Stop speech recognition
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
   };
 
@@ -341,17 +481,6 @@ const InterviewPage = () => {
     }
     return <Mic />;
   };
-
-  // For demo purposes, allow simulating speech recognition on button click
-  useEffect(() => {
-    if (isListening && isInProgress && !isSpeaking && !interviewComplete) {
-      const timer = setTimeout(() => {
-        simulateSpeechRecognition();
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isListening, isInProgress, isSpeaking, interviewComplete]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -498,6 +627,17 @@ const InterviewPage = () => {
                 </Card>
               </div>
             )}
+            
+            {interviewComplete && (
+              <div className="mt-4 text-center">
+                <Button 
+                  onClick={endInterview}
+                  className="bg-interview-primary hover:bg-interview-primary/90 mx-auto"
+                >
+                  View Results
+                </Button>
+              </div>
+            )}
           </div>
           
           {/* Conversation log column */}
@@ -531,6 +671,19 @@ const InterviewPage = () => {
                           )}
                         </div>
                         <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                        
+                        {/* Show response quality indicator for AI feedback messages */}
+                        {message.speaker === 'ai' && message.quality && (
+                          <div className={`mt-2 text-xs px-2 py-1 rounded-full inline-flex items-center ${
+                            message.quality === 'good' ? 'bg-green-100 text-green-800' :
+                            message.quality === 'fair' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {message.quality === 'good' ? 'Good Answer' :
+                             message.quality === 'fair' ? 'Fair Answer' :
+                             'Needs Improvement'}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))
