@@ -1,15 +1,28 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { InterviewHistory } from '@/components/dashboard/interview-history';
+import { Card, CardContent } from '@/components/ui/card';
+import { CalendarClock, CheckCircle, Clock } from 'lucide-react';
+
+interface Interview {
+  id: string;
+  title: string;
+  date: string;
+  duration: string;
+  role: string;
+  type: 'technical' | 'behavioral';
+  completed: boolean;
+  score?: number;
+}
 
 const Dashboard = () => {
   const navigate = useNavigate();
   
   // Mock interview data (in a real app, this would come from a database)
-  const [interviews] = useState([
+  const [interviews, setInterviews] = useState<Interview[]>([
     {
       id: '1',
       title: 'Frontend Developer Interview',
@@ -45,6 +58,11 @@ const Dashboard = () => {
     navigate('/interview/new');
   };
 
+  // Calculate metrics
+  const completedInterviews = interviews.filter(interview => interview.completed).length;
+  const pendingInterviews = interviews.filter(interview => !interview.completed).length;
+  const upcomingInterviews = 0; // This would come from scheduled interviews in a real app
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar isAuthenticated={true} />
@@ -62,19 +80,59 @@ const Dashboard = () => {
           </Button>
         </div>
         
+        {/* Welcome Card */}
+        <Card className="mb-8 bg-gradient-to-r from-interview-primary/10 to-interview-primary/5 border-none">
+          <CardContent className="py-6">
+            <h2 className="text-2xl font-bold text-interview-primary mb-2">Welcome to Interview AI</h2>
+            <p className="text-gray-700">
+              Practice your interview skills with our AI-powered mock interview system. 
+              Get personalized feedback and improve your performance with each session.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Metrics Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <div className="rounded-full bg-green-100 p-3 mr-4">
+                <CheckCircle className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm">Completed Interviews</p>
+                <h3 className="text-2xl font-bold">{completedInterviews}</h3>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <div className="rounded-full bg-amber-100 p-3 mr-4">
+                <Clock className="h-6 w-6 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm">Pending Interviews</p>
+                <h3 className="text-2xl font-bold">{pendingInterviews}</h3>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-6 flex items-center">
+              <div className="rounded-full bg-blue-100 p-3 mr-4">
+                <CalendarClock className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-gray-500 text-sm">Upcoming Interviews</p>
+                <h3 className="text-2xl font-bold">{upcomingInterviews}</h3>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
           <InterviewHistory interviews={interviews} />
-        </div>
-
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 text-center">
-            <h2 className="text-2xl font-bold mb-4">Welcome to InterviewAI</h2>
-            <p className="text-gray-600 mb-6">
-              Practice your interview skills with our AI-powered mock interview system. 
-              Get personalized feedback and improve your performance.
-            </p>
-          </div>
         </div>
       </main>
     </div>

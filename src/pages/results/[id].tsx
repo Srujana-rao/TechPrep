@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
@@ -18,17 +17,20 @@ const ResultsPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('summary');
 
-  // Data passed from the interview page or mock data if none was passed
+  // Data passed from the interview page
   const conversationData = location.state?.conversation || [];
-  const overallScoreData = location.state?.overallScore || 7.5; // Default score if none provided
+  const overallScoreData = location.state?.overallScore || 0;
   const responseQualityData = location.state?.responseQuality || {};
-  const questionsAskedData = location.state?.questionsAsked || 5;
+  const questionsAskedData = location.state?.questionsAsked || 0;
+  const userResponsesData = location.state?.userResponses || [];
+  const completedAt = location.state?.completedAt || new Date().toISOString();
+  const interviewDuration = location.state?.interviewDuration || '0 minutes';
 
   // Generate result data based on the actual interview
   const [resultData, setResultData] = useState({
     title: 'Frontend Developer Interview',
-    date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    duration: `${Math.floor(Math.random() * 20) + 15} minutes`, // Mock duration
+    date: new Date(completedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+    duration: interviewDuration,
     role: 'Senior Frontend Developer',
     scores: {
       technicalKnowledge: 0,
@@ -47,30 +49,76 @@ const ResultsPage = () => {
 
   // Generate report when component mounts or interview data changes
   useEffect(() => {
-    // Generate scores based on response quality
+    // Don't generate report if we don't have any responses
+    if (questionsAskedData === 0 || userResponsesData.length === 0) {
+      setResultData({
+        ...resultData,
+        overallScore: 0,
+        strengths: ["No interview data available"],
+        improvements: ["Complete an interview to receive feedback"],
+        keyInsights: ["No insights available without interview data"],
+        scores: {
+          technicalKnowledge: 0,
+          communication: 0,
+          problemSolving: 0,
+          culturalFit: 0,
+          confidence: 0,
+          questionQuality: 0
+        }
+      });
+      return;
+    }
+    
+    // Generate scores based on actual response quality
     const generateScores = () => {
-      // Default base scores
+      // Default base scores - set to low initial values
       const baseScores = {
-        technicalKnowledge: 6 + Math.random() * 2,
-        communication: 6 + Math.random() * 2,
-        problemSolving: 6 + Math.random() * 2,
-        culturalFit: 6 + Math.random() * 2,
-        confidence: 6 + Math.random() * 2,
-        questionQuality: 6 + Math.random() * 2
+        technicalKnowledge: 4,
+        communication: 4,
+        problemSolving: 4,
+        culturalFit: 4,
+        confidence: 4,
+        questionQuality: 4
       };
       
-      // Adjust scores based on response quality
-      Object.values(responseQualityData).forEach(quality => {
-        if (quality === 'good') {
-          baseScores.technicalKnowledge += 0.5;
-          baseScores.communication += 0.4;
-          baseScores.problemSolving += 0.3;
-        } else if (quality === 'fair') {
-          baseScores.technicalKnowledge += 0.2;
-          baseScores.communication += 0.1;
-        } else {
-          baseScores.technicalKnowledge -= 0.2;
-          baseScores.problemSolving -= 0.1;
+      // No responses means low scores
+      if (userResponsesData.length === 0) {
+        return baseScores;
+      }
+      
+      // Adjust scores based on response quality and content
+      Object.entries(responseQualityData).forEach(([questionIndex, quality]) => {
+        const responseIndex = parseInt(questionIndex) - 1;
+        if (responseIndex >= 0 && responseIndex < userResponsesData.length) {
+          const response = userResponsesData[responseIndex];
+          
+          // Calculate response length as a quality factor
+          const wordCount = response.split(' ').length;
+          const lengthFactor = wordCount > 30 ? 0.8 : wordCount > 15 ? 0.5 : 0.2;
+          
+          if (quality === 'good') {
+            baseScores.technicalKnowledge += 1.5 * lengthFactor;
+            baseScores.communication += 2.0 * lengthFactor;
+            baseScores.problemSolving += 1.7 * lengthFactor;
+            baseScores.culturalFit += 1.3 * lengthFactor;
+            baseScores.confidence += 1.8 * lengthFactor;
+            baseScores.questionQuality += 1.6 * lengthFactor;
+          } else if (quality === 'fair') {
+            baseScores.technicalKnowledge += 0.8 * lengthFactor;
+            baseScores.communication += 1.0 * lengthFactor;
+            baseScores.problemSolving += 0.7 * lengthFactor;
+            baseScores.culturalFit += 0.9 * lengthFactor;
+            baseScores.confidence += 1.0 * lengthFactor;
+            baseScores.questionQuality += 0.8 * lengthFactor;
+          } else {
+            // If quality is 'needs_improvement'
+            baseScores.technicalKnowledge += 0.2 * lengthFactor;
+            baseScores.communication += 0.3 * lengthFactor;
+            baseScores.problemSolving += 0.2 * lengthFactor;
+            baseScores.culturalFit += 0.3 * lengthFactor;
+            baseScores.confidence += 0.2 * lengthFactor;
+            baseScores.questionQuality += 0.2 * lengthFactor;
+          }
         }
       });
       
@@ -82,84 +130,114 @@ const ResultsPage = () => {
       return baseScores;
     };
 
-    // Generate strengths based on highest scores
+    // Generate strengths based on highest scores and responses
     const generateStrengths = (scores: any) => {
-      const strengths = [];
-      if (scores.technicalKnowledge > 7) strengths.push('Strong technical knowledge demonstrated throughout the interview');
-      if (scores.communication > 7) strengths.push('Excellent communication skills and articulation of concepts');
-      if (scores.problemSolving > 7) strengths.push('Good problem-solving approach with structured thinking');
-      if (scores.culturalFit > 7) strengths.push('Positive attitude and cultural alignment');
-      if (scores.confidence > 7) strengths.push('Confident presentation of ideas and experiences');
+      if (userResponsesData.length === 0) {
+        return ["No interview data available to assess strengths"];
+      }
       
-      // Add generic strengths if needed to have at least 3
+      // Sort scores to find highest ones
+      const sortedScores = Object.entries(scores)
+        .sort(([, a], [, b]) => Number(b) - Number(a))
+        .map(([key]) => key);
+      
+      const strengths = [];
+      const avgResponseLength = userResponsesData.reduce((sum, response) => 
+        sum + response.split(' ').length, 0) / userResponsesData.length;
+      
+      // Add strengths based on response content and scores
+      if (sortedScores[0] === 'technicalKnowledge' && scores.technicalKnowledge > 6) 
+        strengths.push('Demonstrated solid technical knowledge in your responses');
+      
+      if (sortedScores[0] === 'communication' && scores.communication > 6) 
+        strengths.push('Excellent communication skills and articulation of concepts');
+      
+      if (sortedScores[0] === 'problemSolving' && scores.problemSolving > 6) 
+        strengths.push('Good problem-solving approach with structured thinking');
+      
+      if (avgResponseLength > 25)
+        strengths.push('Provided detailed and thorough responses to questions');
+      
+      // Add generic strengths if needed to have at least 2
       const genericStrengths = [
-        'Demonstrated ability to explain complex concepts clearly',
-        'Showed enthusiasm for the role and company',
-        'Provided specific examples from past experiences',
-        'Displayed good listening skills during the interview'
+        'Showed engagement with the interview process',
+        'Demonstrated ability to respond to questions directly',
+        'Provided some context in your answers',
+        'Maintained consistency in your responses'
       ];
       
-      while (strengths.length < 3 && genericStrengths.length > 0) {
+      while (strengths.length < 2 && genericStrengths.length > 0) {
         strengths.push(genericStrengths.shift()!);
       }
       
       return strengths;
     };
 
-    // Generate improvement areas based on lowest scores
+    // Generate improvement areas based on actual responses and lowest scores
     const generateImprovements = (scores: any) => {
+      if (userResponsesData.length === 0) {
+        return ["Complete an interview to receive personalized improvement suggestions"];
+      }
+      
+      // Sort scores to find lowest ones
+      const sortedScores = Object.entries(scores)
+        .sort(([, a], [, b]) => Number(a) - Number(b))
+        .map(([key]) => key);
+      
       const improvements = [];
-      if (scores.technicalKnowledge < 8) improvements.push('Consider expanding on technical details in your responses');
-      if (scores.communication < 8) improvements.push('Try to be more concise when explaining complex concepts');
-      if (scores.problemSolving < 8) improvements.push('Practice breaking down problems into smaller parts');
-      if (scores.culturalFit < 8) improvements.push('Share more examples of team collaboration experiences');
-      if (scores.confidence < 8) improvements.push('Work on expressing your ideas with more confidence');
+      const avgResponseLength = userResponsesData.reduce((sum, response) => 
+        sum + response.split(' ').length, 0) / userResponsesData.length;
+      
+      // Add improvements based on response content and scores
+      if (sortedScores[0] === 'technicalKnowledge' || scores.technicalKnowledge < 6) 
+        improvements.push('Focus on explaining technical concepts with more detail and precision');
+      
+      if (sortedScores[0] === 'communication' || scores.communication < 6) 
+        improvements.push('Practice clearer articulation of your thoughts and experiences');
+      
+      if (sortedScores[0] === 'problemSolving' || scores.problemSolving < 6) 
+        improvements.push('Work on breaking down problems and explaining your approach step-by-step');
+      
+      if (avgResponseLength < 15)
+        improvements.push('Provide more detailed responses with specific examples from your experience');
       
       // Add generic improvements if needed to have at least 3
       const genericImprovements = [
-        'Provide more specific examples from past projects',
-        'Consider discussing trade-offs in technical decisions more explicitly',
-        'More emphasis on testing strategies would strengthen responses',
+        'Incorporate more specific examples from past projects',
+        'Consider discussing trade-offs in your decision-making process',
+        'Practice structuring your answers with a clear beginning, middle, and conclusion',
         'Elaborate more on collaborative experiences in team settings'
       ];
       
-      while (improvements.length < 3 && genericImprovements.length > 0) {
+      while (improvements.length < 2 && genericImprovements.length > 0) {
         improvements.push(genericImprovements.shift()!);
       }
       
       return improvements;
     };
 
-    // Generate key insights
+    // Generate key insights based on actual interview data
     const generateInsights = (scores: any, strengths: string[], improvements: string[]) => {
+      if (userResponsesData.length === 0) {
+        return ["No interview data available for insights"];
+      }
+      
       const insights = [];
+      const avgScore = overallScoreData;
       
-      // Add one strength-based insight
-      if (strengths.length > 0) {
-        insights.push(`You demonstrated ${
-          scores.technicalKnowledge > scores.communication ? 
-            'strong technical knowledge' : 
-            'excellent communication skills'
-        } throughout the interview.`);
+      // Add personalized insights
+      if (avgScore >= 8) {
+        insights.push(`Your overall performance was strong. You demonstrated good understanding of the questions and provided relevant answers.`);
+      } else if (avgScore >= 6) {
+        insights.push(`Your overall performance was satisfactory. With some improvements in your response quality, you could excel in real interviews.`);
+      } else if (avgScore >= 1) {
+        insights.push(`Your responses could use more development. Focus on providing specific examples and structured answers.`);
+      } else {
+        insights.push(`Not enough data to provide meaningful insights. Complete a full interview for better feedback.`);
       }
       
-      // Add one improvement-based insight
-      if (improvements.length > 0) {
-        insights.push(`Focus on ${
-          scores.technicalKnowledge < scores.communication ? 
-            'strengthening your technical explanations' : 
-            'improving your communication clarity'
-        } to enhance your interview performance.`);
-      }
-      
-      // Add generic insights
-      insights.push(`Your overall performance indicates you are ${
-        overallScoreData >= 8 ? 'well-prepared' : 
-        overallScoreData >= 6 ? 'reasonably prepared' : 
-        'still developing skills needed'
-      } for this role.`);
-      
-      insights.push('Practicing more mock interviews will help you refine your responses further.');
+      // Add practice recommendation
+      insights.push(`With ${questionsAskedData > 1 ? questionsAskedData : 'more'} practice questions, your interview confidence will continue to improve.`);
       
       return insights;
     };
@@ -196,7 +274,7 @@ const ResultsPage = () => {
     };
 
     generateResultData();
-  }, [conversationData, overallScoreData, responseQualityData]);
+  }, [conversationData, overallScoreData, responseQualityData, userResponsesData, questionsAskedData, completedAt, interviewDuration]);
 
   // Prepare data for charts
   const scoreData = [
@@ -214,21 +292,78 @@ const ResultsPage = () => {
       return "Ready for real interviews! Consider focusing on your specific improvements for additional polish.";
     } else if (resultData.overallScore >= 7) {
       return "Almost ready! A few more practice sessions focusing on your areas for improvement would be beneficial.";
-    } else {
+    } else if (resultData.overallScore >= 1) {
       return "We recommend additional practice sessions to build confidence and improve your responses.";
+    } else {
+      return "Start an interview to receive personalized feedback and recommendations.";
     }
   };
 
-  // Handle download report
+  // Implement actual report download
   const handleDownloadReport = () => {
+    // Create report content based on actual data
+    const reportContent = `
+# Interview Performance Report
+
+## Overview
+- **Interview Type**: Frontend Developer Interview
+- **Date**: ${resultData.date}
+- **Duration**: ${resultData.duration}
+- **Overall Score**: ${resultData.overallScore.toFixed(1)}/10
+
+## Performance Summary
+${resultData.overallScore >= 8 ? 'Excellent performance! You demonstrated strong interview skills.' : 
+  resultData.overallScore >= 6 ? 'Good performance with room for improvement in specific areas.' : 
+  resultData.overallScore >= 1 ? 'Your interview shows potential, but needs significant improvement.' :
+  'Not enough data to provide a comprehensive assessment.'}
+
+## Strengths
+${resultData.strengths.map(strength => `- ${strength}`).join('\n')}
+
+## Areas for Improvement
+${resultData.improvements.map(improvement => `- ${improvement}`).join('\n')}
+
+## Score Breakdown
+- Technical Knowledge: ${resultData.scores.technicalKnowledge.toFixed(1)}/10
+- Communication: ${resultData.scores.communication.toFixed(1)}/10
+- Problem Solving: ${resultData.scores.problemSolving.toFixed(1)}/10
+- Cultural Fit: ${resultData.scores.culturalFit.toFixed(1)}/10
+- Confidence: ${resultData.scores.confidence.toFixed(1)}/10
+- Response Quality: ${resultData.scores.questionQuality.toFixed(1)}/10
+
+## Interview Transcript
+${resultData.transcript.map(entry => 
+  `${entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}: ${entry.text}
+  ${entry.feedback ? `Feedback: ${entry.feedback}` : ''}
+  `
+).join('\n')}
+
+## Recommendation
+${getRecommendedAction()}
+
+Report generated by InterviewAI on ${new Date().toLocaleDateString()}
+    `;
+    
+    // Create a blob from the report content
+    const blob = new Blob([reportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link element to trigger download
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Interview_Report_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    
     toast({
       title: "Report Downloaded",
-      description: "Your interview report has been downloaded successfully.",
+      description: "Your interview report has been downloaded as a text file.",
       duration: 3000,
     });
-    
-    // In a real app, this would generate and download a PDF report
-    // For now, we'll just show a toast notification
   };
 
   return (
@@ -270,18 +405,24 @@ const ResultsPage = () => {
                 <div>
                   <p className="text-lg font-medium mb-1">
                     {resultData.overallScore >= 8.5 ? 'Excellent' : 
-                     resultData.overallScore >= 7 ? 'Good' : 'Needs Improvement'}
+                     resultData.overallScore >= 7 ? 'Good' : 
+                     resultData.overallScore >= 1 ? 'Needs Improvement' : 
+                     'No Data'}
                   </p>
                   <p className="text-gray-500 mb-2">
                     {getRecommendedAction()}
                   </p>
                   <Badge 
                     variant={resultData.overallScore >= 8.5 ? "default" : 
-                            resultData.overallScore >= 7 ? "secondary" : "outline"}
+                            resultData.overallScore >= 7 ? "secondary" : 
+                            resultData.overallScore >= 1 ? "outline" : 
+                            "destructive"}
                     className="mt-2"
                   >
                     {resultData.overallScore >= 8.5 ? 'Interview Ready' : 
-                     resultData.overallScore >= 7 ? 'Almost Ready' : 'Additional Practice Needed'}
+                     resultData.overallScore >= 7 ? 'Almost Ready' : 
+                     resultData.overallScore >= 1 ? 'Additional Practice Needed' :
+                     'No Interview Data'}
                   </Badge>
                 </div>
               </div>
@@ -391,27 +532,33 @@ const ResultsPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {resultData.transcript.map((entry, index) => (
-                    <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                          entry.speaker === 'ai' ? 'bg-interview-primary' : 'bg-interview-secondary'
-                        }`}>
-                          {entry.speaker === 'ai' ? 'AI' : 'You'}
+                  {resultData.transcript.length > 0 ? (
+                    resultData.transcript.map((entry, index) => (
+                      <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                            entry.speaker === 'ai' ? 'bg-interview-primary' : 'bg-interview-secondary'
+                          }`}>
+                            {entry.speaker === 'ai' ? 'AI' : 'You'}
+                          </div>
+                          <span className="font-medium">
+                            {entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}
+                          </span>
                         </div>
-                        <span className="font-medium">
-                          {entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}
-                        </span>
+                        <p className="text-gray-700 mb-2">{entry.text}</p>
+                        
+                        {entry.feedback && (
+                          <div className="mt-2 ml-10 p-2 bg-gray-50 rounded text-sm text-gray-600 border-l-2 border-interview-primary">
+                            <p><span className="font-medium">Feedback:</span> {entry.feedback}</p>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-gray-700 mb-2">{entry.text}</p>
-                      
-                      {entry.feedback && (
-                        <div className="mt-2 ml-10 p-2 bg-gray-50 rounded text-sm text-gray-600 border-l-2 border-interview-primary">
-                          <p><span className="font-medium">Feedback:</span> {entry.feedback}</p>
-                        </div>
-                      )}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No transcript data available. Complete an interview to see the full conversation.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
