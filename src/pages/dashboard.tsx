@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
@@ -6,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { InterviewHistory } from '@/components/dashboard/interview-history';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarClock, CheckCircle, Clock } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Interview {
   id: string;
@@ -22,62 +23,77 @@ interface Interview {
     improvements: string[];
     completedAt: string;
   };
+  user_id?: string;
 }
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   
-  // Mock interview data (in a real app, this would come from a database)
-  const [interviews, setInterviews] = useState<Interview[]>([
-    {
-      id: '1',
-      title: 'Frontend Developer Interview',
-      date: 'May 7, 2025',
-      duration: '28 minutes',
-      role: 'Senior Frontend Developer',
-      type: 'technical',
-      completed: true,
-      score: 8.5,
-      results: {
-        overallScore: 8.5,
-        strengths: ['Demonstrated solid technical knowledge', 'Clear communication'],
-        improvements: ['Provide more specific examples'],
-        completedAt: '2025-05-07T14:32:00Z'
+  // Interview data will be fetched based on user ID
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Fetch user-specific interviews when component mounts or user changes
+  useEffect(() => {
+    const fetchUserInterviews = async () => {
+      if (!currentUser) {
+        setIsLoading(false);
+        return;
       }
-    },
-    {
-      id: '2',
-      title: 'React Engineer Practice',
-      date: 'May 4, 2025',
-      duration: '34 minutes',
-      role: 'React Developer',
-      type: 'technical',
-      completed: true,
-      score: 7.8,
-      results: {
-        overallScore: 7.8,
-        strengths: ['Good React knowledge', 'Structured answers'],
-        improvements: ['Elaborate more on solutions'],
-        completedAt: '2025-05-04T10:15:00Z'
+      
+      setIsLoading(true);
+      
+      try {
+        // First check localStorage for any pending/recent interviews for this user
+        const storedInterviews = localStorage.getItem('interviewResults');
+        let localInterviews: Interview[] = [];
+        
+        if (storedInterviews) {
+          try {
+            const parsedInterviews = JSON.parse(storedInterviews);
+            // Filter to only include interviews for the current user
+            localInterviews = parsedInterviews.filter(
+              (interview: any) => interview.user_id === currentUser.id
+            );
+          } catch (error) {
+            console.error('Error parsing stored interviews:', error);
+          }
+        }
+        
+        // Merge the mock data (only for this user) with localStorage data
+        // In a real app, this would be replaced with a database query
+        let userInterviews: Interview[] = [
+          // You could keep some default interviews for demo purposes,
+          // but make sure they're assigned to the current user
+        ];
+        
+        // Add the user_id to all interviews to ensure proper filtering
+        const mergedInterviews = [...userInterviews, ...localInterviews].map(interview => ({
+          ...interview,
+          user_id: currentUser.id
+        }));
+        
+        setInterviews(mergedInterviews);
+      } catch (error) {
+        console.error('Error fetching user interviews:', error);
+      } finally {
+        setIsLoading(false);
       }
-    },
-    {
-      id: '3',
-      title: 'UX Developer Interview',
-      date: 'April 30, 2025',
-      duration: '22 minutes',
-      role: 'UX Developer',
-      type: 'behavioral',
-      completed: false
-    }
-  ]);
+    };
+    
+    fetchUserInterviews();
+  }, [currentUser]);
   
   const handleStartNewInterview = () => {
     navigate('/interview/new');
   };
 
   const handleDeleteInterview = (id: string) => {
-    setInterviews(prevInterviews => prevInterviews.filter(interview => interview.id !== id));
+    // Only remove interviews belonging to the current user
+    setInterviews(prevInterviews => 
+      prevInterviews.filter(interview => interview.id !== id)
+    );
     
     // Remove from local storage if exists
     try {
@@ -85,7 +101,7 @@ const Dashboard = () => {
       if (storedInterviews) {
         const parsedInterviews = JSON.parse(storedInterviews);
         const updatedStoredInterviews = parsedInterviews.filter(
-          (interview: any) => interview.id !== id
+          (interview: any) => interview.id !== id || interview.user_id !== currentUser?.id
         );
         localStorage.setItem('interviewResults', JSON.stringify(updatedStoredInterviews));
       }
@@ -93,43 +109,8 @@ const Dashboard = () => {
       console.error('Error updating localStorage after delete:', error);
     }
   };
-
-  // Check local storage for any new interview results
-  useEffect(() => {
-    const storedInterviews = localStorage.getItem('interviewResults');
-    if (storedInterviews) {
-      try {
-        const parsedInterviews = JSON.parse(storedInterviews);
-        const updatedInterviews = [...interviews];
-        
-        // Update or add new interview results
-        parsedInterviews.forEach((storedInterview: any) => {
-          const existingIndex = updatedInterviews.findIndex(i => i.id === storedInterview.id);
-          
-          if (existingIndex >= 0) {
-            updatedInterviews[existingIndex] = {
-              ...updatedInterviews[existingIndex],
-              ...storedInterview,
-              completed: true,
-              score: storedInterview.results?.overallScore || 0
-            };
-          } else {
-            updatedInterviews.push({
-              ...storedInterview,
-              completed: true,
-              score: storedInterview.results?.overallScore || 0
-            });
-          }
-        });
-        
-        setInterviews(updatedInterviews);
-      } catch (error) {
-        console.error('Error parsing stored interviews:', error);
-      }
-    }
-  }, []);
   
-  // Calculate metrics
+  // Calculate metrics based on user-specific interviews
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;
   const upcomingInterviews = 0; // This would come from scheduled interviews in a real app
@@ -154,7 +135,9 @@ const Dashboard = () => {
         {/* Welcome Card */}
         <Card className="mb-8 bg-gradient-to-r from-interview-primary/10 to-interview-primary/5 border-none">
           <CardContent className="py-6">
-            <h2 className="text-2xl font-bold text-interview-primary mb-2">Welcome to Interview AI</h2>
+            <h2 className="text-2xl font-bold text-interview-primary mb-2">
+              Welcome, {currentUser?.email?.split('@')[0] || 'User'}!
+            </h2>
             <p className="text-gray-700">
               Practice your interview skills with our AI-powered mock interview system. 
               Get personalized feedback and improve your performance with each session.
@@ -203,10 +186,14 @@ const Dashboard = () => {
 
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
-          <InterviewHistory 
-            interviews={interviews} 
-            onDeleteInterview={handleDeleteInterview}
-          />
+          {isLoading ? (
+            <div className="text-center py-8">Loading your interviews...</div>
+          ) : (
+            <InterviewHistory 
+              interviews={interviews} 
+              onDeleteInterview={handleDeleteInterview}
+            />
+          )}
         </div>
       </main>
     </div>

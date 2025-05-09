@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -35,6 +34,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       (event, session) => {
         setSession(session);
         setCurrentUser(session?.user ?? null);
+        
+        // If user signs out, clear any user-specific data from localStorage
+        if (event === 'SIGNED_OUT') {
+          try {
+            // Filter local storage to only keep data that doesn't belong to this user
+            const storedInterviews = localStorage.getItem('interviewResults');
+            if (storedInterviews) {
+              const parsedInterviews = JSON.parse(storedInterviews);
+              // Clear user session data but keep any data without user_id for backward compatibility
+              const nonUserData = parsedInterviews.filter(
+                (interview: any) => !interview.user_id || interview.user_id !== session?.user?.id
+              );
+              localStorage.setItem('interviewResults', JSON.stringify(nonUserData));
+            }
+          } catch (error) {
+            console.error('Error clearing user data from localStorage:', error);
+          }
+        }
         
         // Fetch any additional user data if needed
         if (session?.user) {
