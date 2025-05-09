@@ -12,6 +12,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import { generateInterviewQuestions } from '@/services/ai-interview-service';
 
 // Create form schema
 const formSchema = z.object({
@@ -46,11 +47,39 @@ const NewInterviewPage = () => {
     try {
       setIsSubmitting(true);
       
-      // Mock interview generation (in a real app, we would save this to a database)
-      console.log('Form values:', values);
+      // Generate custom questions based on form values
+      const skillsArray = values.skills.split(',').map(skill => skill.trim());
+      const customQuestions = await generateInterviewQuestions({
+        position: values.position,
+        experienceLevel: values.experienceLevel,
+        skills: skillsArray,
+        interviewType: values.interviewType as 'technical' | 'behavioral' | 'mixed',
+        jobDescription: values.jobDescription,
+        additionalInfo: values.additionalInfo,
+      });
       
       // Create a mock interview ID (in a real app, this would come from the backend)
       const interviewId = Math.random().toString(36).substring(2, 11);
+      
+      // Create interview data structure
+      const interviewData = {
+        id: interviewId,
+        title: `${values.position} Interview`,
+        position: values.position,
+        experienceLevel: values.experienceLevel,
+        skills: skillsArray,
+        interviewType: values.interviewType,
+        questions: customQuestions,
+        date: new Date().toISOString(),
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Save to localStorage for persistence
+      const existingInterviews = localStorage.getItem('interviewData');
+      let interviewsArray = existingInterviews ? JSON.parse(existingInterviews) : [];
+      interviewsArray.push(interviewData);
+      localStorage.setItem('interviewData', JSON.stringify(interviewsArray));
       
       toast({
         title: "Interview Created",

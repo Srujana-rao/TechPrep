@@ -19,7 +19,8 @@ interface Interview {
   date: string;
   duration: string;
   role: string;
-  type: 'technical' | 'behavioral';
+  position?: string;
+  type: 'technical' | 'behavioral' | 'mixed';
   completed: boolean;
   score?: number;
   results?: {
@@ -59,7 +60,7 @@ export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
                 {interview.completed ? "Completed" : "In Progress"}
               </Badge>
             </div>
-            <CardDescription>{interview.role}</CardDescription>
+            <CardDescription>{interview.position || interview.role}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
@@ -73,17 +74,26 @@ export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
               </div>
             </div>
             <Badge variant="secondary" className="mr-2">
-              {interview.type === 'technical' ? 'Technical' : 'Behavioral'}
+              {interview.type === 'technical' ? 'Technical' : 
+               interview.type === 'behavioral' ? 'Behavioral' : 'Mixed'}
             </Badge>
             {interview.completed && interview.score !== undefined && (
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Overall Score</span>
-                  <span className="text-interview-primary font-bold">{interview.score.toFixed(1)}/10</span>
+                  <span className={`font-bold ${
+                    interview.score >= 8 ? 'text-green-600' : 
+                    interview.score >= 6 ? 'text-amber-600' : 
+                    'text-red-600'
+                  }`}>{interview.score.toFixed(1)}/10</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2 mt-1">
                   <div 
-                    className="bg-interview-primary h-2 rounded-full" 
+                    className={`h-2 rounded-full ${
+                      interview.score >= 8 ? 'bg-green-600' : 
+                      interview.score >= 6 ? 'bg-amber-600' : 
+                      'bg-red-600'
+                    }`}
                     style={{ width: `${interview.score * 10}%` }}
                   ></div>
                 </div>

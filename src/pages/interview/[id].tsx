@@ -32,6 +32,8 @@ const InterviewPage = () => {
   const [responseQuality, setResponseQuality] = useState<Record<number, 'good' | 'fair' | 'needs_improvement'>>({});
   const [overallScore, setOverallScore] = useState(0);
   const [userResponses, setUserResponses] = useState<string[]>([]);
+  const [interviewData, setInterviewData] = useState<any>(null);
+  const [customQuestions, setCustomQuestions] = useState<string[]>([]);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -40,6 +42,24 @@ const InterviewPage = () => {
   const animationFrameRef = useRef<number | null>(null);
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
+
+  // Initialize with interview data
+  useEffect(() => {
+    if (id) {
+      const storedInterviews = localStorage.getItem('interviewData');
+      if (storedInterviews) {
+        const interviews = JSON.parse(storedInterviews);
+        const currentInterview = interviews.find((interview: any) => interview.id === id);
+        
+        if (currentInterview) {
+          setInterviewData(currentInterview);
+          if (currentInterview.questions && currentInterview.questions.length > 0) {
+            setCustomQuestions(currentInterview.questions);
+          }
+        }
+      }
+    }
+  }, [id]);
 
   // Initialize video and audio when component loads
   useEffect(() => {
@@ -107,7 +127,8 @@ const InterviewPage = () => {
   // Set up speech recognition
   const setupSpeechRecognition = () => {
     // Check if the browser supports the Web Speech API
-    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = (window as any).SpeechRecognition || 
+                              (window as any).webkitSpeechRecognition;
     
     if (!SpeechRecognition) {
       toast({
@@ -276,22 +297,25 @@ const InterviewPage = () => {
     });
   };
 
-  // Start the interview
+  // Start the interview with custom questions
   const startInterview = () => {
     setIsInProgress(true);
     setConversation([
       { 
         speaker: 'ai', 
-        text: `Welcome to your interview. I'll be asking you questions based on your profile and the job requirements. Let's get started.` 
+        text: `Welcome to your ${interviewData?.position || ''} interview. I'll be asking you questions tailored to your profile and skills. Let's get started.` 
       }
     ]);
     
     // Simulate AI speaking
     setIsSpeaking(true);
     
-    // Simulate first question after welcome message
+    // Use the first question from the custom questions or a fallback
     setTimeout(() => {
-      const firstQuestion = "Could you start by telling me about your background and experience relevant to this position?";
+      const firstQuestion = customQuestions.length > 0 
+        ? customQuestions[0]
+        : "Could you start by telling me about your background and experience relevant to this position?";
+        
       setCurrentQuestion(firstQuestion);
       setConversation(prev => [...prev, { speaker: 'ai', text: firstQuestion }]);
       setQuestionsAsked(1);
@@ -320,16 +344,23 @@ const InterviewPage = () => {
     
     setIsProcessing(true);
     
-    // Evaluate response quality based on content
+    // Enhanced response evaluation based on content
     const evaluateResponse = (response: string) => {
-      // Use more sophisticated evaluation criteria
-      const keywords = [
-        'experience', 'skills', 'projects', 'react', 'javascript', 'teamwork',
-        'problem solving', 'communication', 'challenges', 'leadership'
-      ];
-      
+      // More sophisticated evaluation criteria
       const responseLength = response.split(' ').length;
       const lowerCaseResponse = response.toLowerCase();
+      
+      // Extract keywords from interview data if available
+      let keywords = [];
+      if (interviewData?.skills) {
+        keywords = interviewData.skills.flatMap((skill: string) => skill.toLowerCase().split(/\s+/));
+      } else {
+        keywords = [
+          'experience', 'skills', 'projects', 'development', 'teamwork',
+          'problem solving', 'communication', 'challenges', 'leadership'
+        ];
+      }
+      
       const matchedKeywords = keywords.filter(keyword => 
         lowerCaseResponse.includes(keyword.toLowerCase())
       );
@@ -365,14 +396,16 @@ const InterviewPage = () => {
       setIsSpeaking(true);
       
       // Check if we should end the interview
-      if (questionsAsked >= 4) {
+      if (questionsAsked >= Math.min(customQuestions.length, 5)) {
         // Calculate overall score based on response qualities
         const qualityValues = Object.values(responseQuality);
-        const score = qualityValues.reduce((acc, quality) => {
+        const validQualityValues = qualityValues.length > 0 ? qualityValues : [];
+        
+        const score = validQualityValues.length > 0 ? validQualityValues.reduce((acc, quality) => {
           if (quality === 'good') return acc + 9;
           if (quality === 'fair') return acc + 7;
           return acc + 5;
-        }, 0) / qualityValues.length;
+        }, 0) / validQualityValues.length : 0;
         
         setOverallScore(score);
         
@@ -408,18 +441,22 @@ const InterviewPage = () => {
         quality 
       }]);
       
-      // Mock next question from AI
-      const nextQuestions = [
-        "Can you describe a challenging project you worked on and how you overcame obstacles?",
-        "How do you stay updated with the latest technologies and industry trends?",
-        "Tell me about a time when you had to meet a tight deadline. How did you manage your time?",
-        "How do you handle disagreements with team members about technical decisions?",
-        "What's your experience with agile development methodologies?",
-        "How do you approach debugging complex issues in a production environment?",
-      ];
-      
+      // Use the next custom question or a fallback
       setTimeout(() => {
-        const nextQuestion = nextQuestions[questionsAsked];
+        let nextQuestion;
+        if (customQuestions.length > questionsAsked) {
+          nextQuestion = customQuestions[questionsAsked];
+        } else {
+          const fallbackQuestions = [
+            "Can you describe a challenging project you worked on and how you overcame obstacles?",
+            "How do you stay updated with the latest technologies and industry trends?",
+            "Tell me about a time when you had to meet a tight deadline. How did you manage your time?",
+            "How do you handle disagreements with team members about technical decisions?",
+            "What's your approach to debugging complex issues in a production environment?",
+          ];
+          nextQuestion = fallbackQuestions[questionsAsked % fallbackQuestions.length];
+        }
+        
         setCurrentQuestion(nextQuestion);
         setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
         setQuestionsAsked(questionsAsked + 1);
@@ -435,7 +472,6 @@ const InterviewPage = () => {
   // End interview and pass actual data to results page
   const endInterview = () => {
     // Calculate overall score based on actual responses
-    // If no responses, the score should be 0
     const qualityValues = Object.values(responseQuality);
     const score = qualityValues.length > 0 
       ? qualityValues.reduce((acc, quality) => {
@@ -453,20 +489,75 @@ const InterviewPage = () => {
       duration: 3000,
     });
 
-    // Prepare interview result data
+    // Generate strengths and improvements based on actual responses
+    let strengths = [];
+    let improvements = [];
+    
+    // Only add meaningful feedback if there were actual responses
+    if (questionsAsked > 0 && userResponses.length > 0) {
+      // Count quality distribution
+      const qualityCounts = {
+        good: 0,
+        fair: 0,
+        needs_improvement: 0
+      };
+      
+      Object.values(responseQuality).forEach(quality => {
+        qualityCounts[quality]++;
+      });
+      
+      // Generate appropriate strengths based on quality
+      if (qualityCounts.good > 0) {
+        strengths.push('Provided detailed answers with specific examples');
+        
+        if (qualityCounts.good >= Math.floor(questionsAsked / 2)) {
+          strengths.push('Demonstrated good knowledge of technical concepts');
+        }
+      }
+      
+      if (userResponses.length >= questionsAsked - 1) {
+        strengths.push('Addressed all interview questions');
+      }
+      
+      // Generate improvements
+      if (qualityCounts.needs_improvement > 0) {
+        improvements.push('Provide more detailed responses with specific examples');
+      }
+      
+      if (qualityCounts.fair > 0) {
+        improvements.push('Elaborate more on technical concepts and implementations');
+      }
+      
+      // If no clear strengths were identified
+      if (strengths.length === 0) {
+        strengths.push('Participated in the interview process');
+      }
+      
+      // If no clear improvements were identified
+      if (improvements.length === 0 && score < 9) {
+        improvements.push('Continue to work on providing more comprehensive responses');
+      }
+    } else {
+      // No responses case
+      strengths = ['No strengths identified - interview ended without responses'];
+      improvements = ['Complete the full interview to receive proper feedback'];
+    }
+
+    // Prepare interview result data with position and other details
     const interviewResult = {
       id: id || String(Date.now()),
-      title: 'Technical Interview Practice',
+      title: interviewData?.title || 'Interview Practice',
+      position: interviewData?.position || 'Not Specified',
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
       duration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '1 minute',
-      role: 'Frontend Developer',
-      type: 'technical' as const,
+      role: interviewData?.position || 'Professional',
+      type: (interviewData?.interviewType || 'technical') as 'technical' | 'behavioral',
       completed: true,
       score: score,
       results: {
         overallScore: score,
-        strengths: questionsAsked > 0 ? ['Participated in the interview process'] : ['No strengths identified - interview ended without responses'],
-        improvements: questionsAsked > 0 ? ['Provide more detailed answers'] : ['Complete the full interview to receive proper feedback'],
+        strengths: strengths,
+        improvements: improvements,
         completedAt: new Date().toISOString(),
         responseQuality: responseQuality,
         questionsAsked: questionsAsked,
@@ -489,6 +580,22 @@ const InterviewPage = () => {
     
     // Store in localStorage
     localStorage.setItem('interviewResults', JSON.stringify(allResults));
+    
+    // Update the interview data in localStorage to mark it as completed
+    const storedInterviews = localStorage.getItem('interviewData');
+    if (storedInterviews) {
+      const interviews = JSON.parse(storedInterviews);
+      const updatedInterviews = interviews.map((interview: any) => {
+        if (interview.id === id) {
+          return {
+            ...interview,
+            completed: true
+          };
+        }
+        return interview;
+      });
+      localStorage.setItem('interviewData', JSON.stringify(updatedInterviews));
+    }
     
     // Redirect to results page with actual conversation data
     setTimeout(() => {
