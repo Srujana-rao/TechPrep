@@ -1,4 +1,3 @@
-
 import { toast } from "@/hooks/use-toast";
 
 interface QuestionGenerationParams {
@@ -182,3 +181,128 @@ async function generateQuestionsWithAI(params: QuestionGenerationParams): Promis
   return questions;
 }
 */
+
+export const generatePdfReport = (interviewData: any) => {
+  try {
+    import('jspdf').then(({ default: jsPDF }) => {
+      import('jspdf-autotable').then(() => {
+        const doc = new jsPDF();
+        
+        // Add title
+        doc.setFontSize(20);
+        doc.text('Interview Report', 105, 15, { align: 'center' });
+        
+        // Interview details
+        doc.setFontSize(14);
+        doc.text('Interview Details', 14, 30);
+        
+        doc.setFontSize(12);
+        doc.text(`Title: ${interviewData.title || 'N/A'}`, 14, 40);
+        doc.text(`Role: ${interviewData.role || interviewData.position || 'N/A'}`, 14, 46);
+        doc.text(`Date: ${interviewData.date || 'N/A'}`, 14, 52);
+        doc.text(`Duration: ${interviewData.duration || 'N/A'}`, 14, 58);
+        doc.text(`Type: ${interviewData.type || 'N/A'}`, 14, 64);
+        doc.text(`Overall Score: ${interviewData.score ? interviewData.score.toFixed(1) + '/10' : 'N/A'}`, 14, 70);
+        
+        // Performance feedback
+        doc.setFontSize(14);
+        doc.text('Performance Feedback', 14, 85);
+        
+        // Strengths
+        doc.setFontSize(12);
+        doc.text('Strengths:', 14, 95);
+        
+        let yPos = 101;
+        if (interviewData.results && interviewData.results.strengths && interviewData.results.strengths.length > 0) {
+          interviewData.results.strengths.forEach((strength: string, index: number) => {
+            doc.text(`• ${strength}`, 18, yPos);
+            yPos += 6;
+          });
+        } else {
+          doc.text('• No strengths recorded', 18, yPos);
+          yPos += 6;
+        }
+        
+        // Areas for improvement
+        yPos += 5;
+        doc.text('Areas for Improvement:', 14, yPos);
+        yPos += 6;
+        
+        if (interviewData.results && interviewData.results.improvements && interviewData.results.improvements.length > 0) {
+          interviewData.results.improvements.forEach((improvement: string, index: number) => {
+            doc.text(`• ${improvement}`, 18, yPos);
+            yPos += 6;
+          });
+        } else {
+          doc.text('• No areas for improvement recorded', 18, yPos);
+          yPos += 6;
+        }
+        
+        // Questions and Answers
+        yPos += 5;
+        doc.setFontSize(14);
+        doc.text('Questions and Answers', 14, yPos);
+        yPos += 10;
+        
+        if (interviewData.questions && Array.isArray(interviewData.questions) && interviewData.questions.length > 0) {
+          interviewData.questions.forEach((question: any, index: number) => {
+            if (yPos > 250) {
+              doc.addPage();
+              yPos = 20;
+            }
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Question ${index + 1}: ${question.text || 'N/A'}`, 14, yPos);
+            yPos += 6;
+            
+            doc.setFont(undefined, 'normal');
+            if (question.answer && typeof question.answer === 'string') {
+              // Wrap text to avoid overflow
+              const lines = doc.splitTextToSize(
+                `Answer: ${question.answer}`, 
+                180
+              );
+              doc.text(lines, 14, yPos);
+              yPos += 6 * lines.length;
+            } else {
+              doc.text('Answer: Not provided', 14, yPos);
+              yPos += 6;
+            }
+            
+            if (question.feedback) {
+              doc.setFont(undefined, 'italic');
+              const feedbackLines = doc.splitTextToSize(
+                `Feedback: ${question.feedback}`,
+                180
+              );
+              doc.text(feedbackLines, 14, yPos);
+              yPos += 6 * feedbackLines.length + 5;
+            } else {
+              yPos += 10;
+            }
+          });
+        } else {
+          doc.text('No questions recorded for this interview.', 14, yPos);
+        }
+        
+        // Footer with timestamp
+        const date = interviewData.results?.completedAt 
+          ? new Date(interviewData.results.completedAt).toLocaleString() 
+          : new Date().toLocaleString();
+        
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Report generated: ${date}`, 14, 280);
+        
+        // Save the PDF
+        doc.save(`Interview_Report_${interviewData.title || 'Untitled'}.pdf`);
+      });
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return false;
+  }
+};

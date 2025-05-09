@@ -108,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEmailConfirmationRequired(false);
     
     try {
+      // Enable email confirmation in the signup options
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -115,19 +116,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             name,
           },
+          emailRedirectTo: window.location.origin + '/login',
         },
       });
       
       if (error) {
         throw error;
       }
-      
-      // Check if email confirmation is required
+
+      // Check if email confirmation is required by checking if session is not returned
       if (!data.session) {
         setEmailConfirmationRequired(true);
         toast({
           title: 'Verification email sent',
-          description: `Please check your inbox and confirm your email before logging in.`,
+          description: `Please check your inbox at ${email} and confirm your email before logging in.`,
         });
       } else {
         // Success message - user is auto-confirmed

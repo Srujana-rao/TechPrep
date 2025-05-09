@@ -11,7 +11,19 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, BarChart } from 'lucide-react';
+import { Calendar, Clock, BarChart, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "@/hooks/use-toast";
 
 interface Interview {
   id: string;
@@ -33,9 +45,20 @@ interface Interview {
 
 interface InterviewHistoryProps {
   interviews: Interview[];
+  onDeleteInterview?: (id: string) => void;
 }
 
-export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
+export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHistoryProps) => {
+  const handleDelete = (id: string) => {
+    if (onDeleteInterview) {
+      onDeleteInterview(id);
+      toast({
+        title: "Interview deleted",
+        description: "The interview has been successfully deleted.",
+      });
+    }
+  };
+
   if (interviews.length === 0) {
     return (
       <Card className="mt-6">
@@ -56,9 +79,35 @@ export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
           <CardHeader className="pb-3">
             <div className="flex justify-between items-start">
               <CardTitle>{interview.title}</CardTitle>
-              <Badge variant={interview.completed ? "default" : "outline"}>
-                {interview.completed ? "Completed" : "In Progress"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant={interview.completed ? "default" : "outline"}>
+                  {interview.completed ? "Completed" : "In Progress"}
+                </Badge>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500 hover:text-red-500">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Interview</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete this interview? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => handleDelete(interview.id)}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
             <CardDescription>{interview.position || interview.role}</CardDescription>
           </CardHeader>

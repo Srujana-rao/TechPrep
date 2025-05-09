@@ -76,6 +76,24 @@ const Dashboard = () => {
     navigate('/interview/new');
   };
 
+  const handleDeleteInterview = (id: string) => {
+    setInterviews(prevInterviews => prevInterviews.filter(interview => interview.id !== id));
+    
+    // Remove from local storage if exists
+    try {
+      const storedInterviews = localStorage.getItem('interviewResults');
+      if (storedInterviews) {
+        const parsedInterviews = JSON.parse(storedInterviews);
+        const updatedStoredInterviews = parsedInterviews.filter(
+          (interview: any) => interview.id !== id
+        );
+        localStorage.setItem('interviewResults', JSON.stringify(updatedStoredInterviews));
+      }
+    } catch (error) {
+      console.error('Error updating localStorage after delete:', error);
+    }
+  };
+
   // Check local storage for any new interview results
   useEffect(() => {
     const storedInterviews = localStorage.getItem('interviewResults');
@@ -185,7 +203,10 @@ const Dashboard = () => {
 
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
-          <InterviewHistory interviews={interviews} />
+          <InterviewHistory 
+            interviews={interviews} 
+            onDeleteInterview={handleDeleteInterview}
+          />
         </div>
       </main>
     </div>
