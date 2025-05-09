@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -38,26 +39,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // If user signs out, clear any user-specific data from localStorage
         if (event === 'SIGNED_OUT') {
           try {
-            // Filter local storage to only keep data that doesn't belong to this user
-            const storedInterviews = localStorage.getItem('interviewResults');
-            if (storedInterviews) {
-              const parsedInterviews = JSON.parse(storedInterviews);
-              // Clear user session data but keep any data without user_id for backward compatibility
-              const nonUserData = parsedInterviews.filter(
-                (interview: any) => !interview.user_id || interview.user_id !== session?.user?.id
-              );
-              localStorage.setItem('interviewResults', JSON.stringify(nonUserData));
-            }
+            // We don't delete the data, just ensure we don't display it when logged out
+            console.log('User signed out, data preserved for next login');
           } catch (error) {
-            console.error('Error clearing user data from localStorage:', error);
+            console.error('Error handling sign out:', error);
           }
         }
         
         // Fetch any additional user data if needed
         if (session?.user) {
           setTimeout(() => {
-            // This could fetch additional user data from profiles table if needed
             console.log('User authenticated:', session.user.id);
+            
+            // Upon login, ensure all interviews in local storage are properly assigned to this user
+            try {
+              const storedInterviews = localStorage.getItem('interviewResults');
+              if (storedInterviews) {
+                const parsedInterviews = JSON.parse(storedInterviews);
+                
+                // Find any interviews that may belong to this user but don't have user_id set
+                const hasUnassignedInterviews = parsedInterviews.some(
+                  (interview: any) => !interview.user_id
+                );
+                
+                if (hasUnassignedInterviews) {
+                  // Update unassigned interviews with this user's ID
+                  const updatedInterviews = parsedInterviews.map((interview: any) => 
+                    interview.user_id ? interview : { ...interview, user_id: session.user.id }
+                  );
+                  
+                  localStorage.setItem('interviewResults', JSON.stringify(updatedInterviews));
+                  console.log('Updated unassigned interviews with user ID');
+                }
+              }
+            } catch (error) {
+              console.error('Error updating interviews on login:', error);
+            }
           }, 0);
         }
       }

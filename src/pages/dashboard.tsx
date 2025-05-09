@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
@@ -45,36 +46,48 @@ const Dashboard = () => {
       setIsLoading(true);
       
       try {
-        // First check localStorage for any pending/recent interviews for this user
+        // Check localStorage for any pending/recent interviews for this user
         const storedInterviews = localStorage.getItem('interviewResults');
-        let localInterviews: Interview[] = [];
+        let userInterviews: Interview[] = [];
         
         if (storedInterviews) {
           try {
             const parsedInterviews = JSON.parse(storedInterviews);
+            
             // Filter to only include interviews for the current user
-            localInterviews = parsedInterviews.filter(
+            userInterviews = parsedInterviews.filter(
               (interview: any) => interview.user_id === currentUser.id
             );
+            
+            // If there are interviews without user_id but were created while this user was logged in,
+            // associate them with the current user
+            const unassociatedInterviews = parsedInterviews.filter(
+              (interview: any) => !interview.user_id
+            );
+            
+            if (unassociatedInterviews.length > 0) {
+              // Assign the current user to these interviews
+              const updatedInterviews = unassociatedInterviews.map((interview: any) => ({
+                ...interview,
+                user_id: currentUser.id
+              }));
+              
+              // Update these interviews in localStorage
+              const updatedAllInterviews = parsedInterviews.map((interview: any) => 
+                interview.user_id ? interview : { ...interview, user_id: currentUser.id }
+              );
+              
+              localStorage.setItem('interviewResults', JSON.stringify(updatedAllInterviews));
+              
+              // Add these now-associated interviews to the user's interviews
+              userInterviews = [...userInterviews, ...updatedInterviews];
+            }
           } catch (error) {
             console.error('Error parsing stored interviews:', error);
           }
         }
         
-        // Merge the mock data (only for this user) with localStorage data
-        // In a real app, this would be replaced with a database query
-        let userInterviews: Interview[] = [
-          // You could keep some default interviews for demo purposes,
-          // but make sure they're assigned to the current user
-        ];
-        
-        // Add the user_id to all interviews to ensure proper filtering
-        const mergedInterviews = [...userInterviews, ...localInterviews].map(interview => ({
-          ...interview,
-          user_id: currentUser.id
-        }));
-        
-        setInterviews(mergedInterviews);
+        setInterviews(userInterviews);
       } catch (error) {
         console.error('Error fetching user interviews:', error);
       } finally {
@@ -95,13 +108,13 @@ const Dashboard = () => {
       prevInterviews.filter(interview => interview.id !== id)
     );
     
-    // Remove from local storage if exists
+    // Remove from local storage
     try {
       const storedInterviews = localStorage.getItem('interviewResults');
       if (storedInterviews) {
         const parsedInterviews = JSON.parse(storedInterviews);
         const updatedStoredInterviews = parsedInterviews.filter(
-          (interview: any) => interview.id !== id || interview.user_id !== currentUser?.id
+          (interview: any) => interview.id !== id
         );
         localStorage.setItem('interviewResults', JSON.stringify(updatedStoredInterviews));
       }

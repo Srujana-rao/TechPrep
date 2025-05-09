@@ -35,6 +35,7 @@ interface Interview {
   type: 'technical' | 'behavioral' | 'mixed';
   completed: boolean;
   score?: number;
+  user_id?: string;
   results?: {
     overallScore: number;
     strengths: string[];
