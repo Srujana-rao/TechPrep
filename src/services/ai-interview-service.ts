@@ -1,9 +1,10 @@
+
 import { toast } from "@/hooks/use-toast";
 
 interface QuestionGenerationParams {
   position: string;
   experienceLevel: string;
-  skills: string[];
+  skills: string[] | string;
   interviewType: 'technical' | 'behavioral' | 'mixed';
   jobDescription?: string;
   additionalInfo?: string;
@@ -66,7 +67,7 @@ export const generateInterviewQuestions = async (params: QuestionGenerationParam
     // Select distinct skills from the skills array to use in templates
     const skillsArray = Array.isArray(params.skills) 
       ? params.skills 
-      : params.skills.split(',').map(s => s.trim());
+      : typeof params.skills === 'string' ? params.skills.split(',').map(s => s.trim()) : [];
     
     // Make sure we have at least 3 skills to use in templates
     const normalizedSkills = skillsArray.length >= 3 
