@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
@@ -436,6 +435,7 @@ const InterviewPage = () => {
   // End interview and pass actual data to results page
   const endInterview = () => {
     // Calculate overall score based on actual responses
+    // If no responses, the score should be 0
     const qualityValues = Object.values(responseQuality);
     const score = qualityValues.length > 0 
       ? qualityValues.reduce((acc, quality) => {
@@ -452,18 +452,56 @@ const InterviewPage = () => {
       description: 'Generating your feedback report...',
       duration: 3000,
     });
+
+    // Prepare interview result data
+    const interviewResult = {
+      id: id || String(Date.now()),
+      title: 'Technical Interview Practice',
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      duration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '1 minute',
+      role: 'Frontend Developer',
+      type: 'technical' as const,
+      completed: true,
+      score: score,
+      results: {
+        overallScore: score,
+        strengths: questionsAsked > 0 ? ['Participated in the interview process'] : ['No strengths identified - interview ended without responses'],
+        improvements: questionsAsked > 0 ? ['Provide more detailed answers'] : ['Complete the full interview to receive proper feedback'],
+        completedAt: new Date().toISOString(),
+        responseQuality: responseQuality,
+        questionsAsked: questionsAsked,
+        userResponses: userResponses,
+        conversation: conversation
+      }
+    };
+    
+    // Get existing results from localStorage
+    const existingResults = localStorage.getItem('interviewResults');
+    let allResults = existingResults ? JSON.parse(existingResults) : [];
+    
+    // Add new result
+    const existingIndex = allResults.findIndex((item: any) => item.id === id);
+    if (existingIndex >= 0) {
+      allResults[existingIndex] = interviewResult;
+    } else {
+      allResults.push(interviewResult);
+    }
+    
+    // Store in localStorage
+    localStorage.setItem('interviewResults', JSON.stringify(allResults));
     
     // Redirect to results page with actual conversation data
     setTimeout(() => {
       navigate(`/results/${id}`, { 
         state: { 
+          interviewData: interviewResult,
           conversation: conversation,
           overallScore: score,
           responseQuality: responseQuality,
           questionsAsked: questionsAsked,
           userResponses: userResponses,
           completedAt: new Date().toISOString(),
-          interviewDuration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '0 minutes'
+          interviewDuration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '1 minute'
         } 
       });
     }, 3000);

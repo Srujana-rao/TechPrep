@@ -9,6 +9,8 @@ import { BarChart2, MessagesSquare, ScrollText, Download, FileText } from 'lucid
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import jspdf from 'jspdf';
+import 'jspdf-autotable';
 
 const ResultsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,21 +19,52 @@ const ResultsPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('summary');
 
+  // Get interview data from location state or localStorage
+  const interviewDataFromState = location.state?.interviewData;
+  const [interviewData, setInterviewData] = useState<any>(interviewDataFromState || null);
+
   // Data passed from the interview page
-  const conversationData = location.state?.conversation || [];
-  const overallScoreData = location.state?.overallScore || 0;
-  const responseQualityData = location.state?.responseQuality || {};
-  const questionsAskedData = location.state?.questionsAsked || 0;
-  const userResponsesData = location.state?.userResponses || [];
-  const completedAt = location.state?.completedAt || new Date().toISOString();
-  const interviewDuration = location.state?.interviewDuration || '0 minutes';
+  const conversationData = location.state?.conversation || interviewData?.results?.conversation || [];
+  const overallScoreData = location.state?.overallScore || interviewData?.results?.overallScore || 0;
+  const responseQualityData = location.state?.responseQuality || interviewData?.results?.responseQuality || {};
+  const questionsAskedData = location.state?.questionsAsked || interviewData?.results?.questionsAsked || 0;
+  const userResponsesData = location.state?.userResponses || interviewData?.results?.userResponses || [];
+  const completedAt = location.state?.completedAt || interviewData?.results?.completedAt || new Date().toISOString();
+  const interviewDuration = location.state?.interviewDuration || interviewData?.duration || '0 minutes';
+
+  // Fetch interview data from localStorage if not passed via state
+  useEffect(() => {
+    if (!interviewData) {
+      const storedInterviewsStr = localStorage.getItem('interviewResults');
+      
+      if (storedInterviewsStr) {
+        try {
+          const storedInterviews = JSON.parse(storedInterviewsStr);
+          const foundInterview = storedInterviews.find((interview: any) => interview.id === id);
+          
+          if (foundInterview) {
+            setInterviewData(foundInterview);
+          } else {
+            toast({
+              title: "Interview not found",
+              description: "The requested interview could not be found.",
+              variant: "destructive",
+            });
+            navigate('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error parsing stored interviews:', error);
+        }
+      }
+    }
+  }, [id]);
 
   // Generate result data based on the actual interview
   const [resultData, setResultData] = useState({
-    title: 'Frontend Developer Interview',
+    title: interviewData?.title || 'Technical Interview Practice',
     date: new Date(completedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     duration: interviewDuration,
-    role: 'Senior Frontend Developer',
+    role: interviewData?.role || 'Frontend Developer',
     scores: {
       technicalKnowledge: 0,
       communication: 0,
@@ -40,7 +73,7 @@ const ResultsPage = () => {
       confidence: 0,
       questionQuality: 0
     },
-    overallScore: 0,
+    overallScore: overallScoreData,
     strengths: [],
     improvements: [],
     keyInsights: [],
@@ -299,71 +332,159 @@ const ResultsPage = () => {
     }
   };
 
-  // Implement actual report download
+  // Generate PDF report
   const handleDownloadReport = () => {
-    // Create report content based on actual data
-    const reportContent = `
-# Interview Performance Report
-
-## Overview
-- **Interview Type**: Frontend Developer Interview
-- **Date**: ${resultData.date}
-- **Duration**: ${resultData.duration}
-- **Overall Score**: ${resultData.overallScore.toFixed(1)}/10
-
-## Performance Summary
-${resultData.overallScore >= 8 ? 'Excellent performance! You demonstrated strong interview skills.' : 
-  resultData.overallScore >= 6 ? 'Good performance with room for improvement in specific areas.' : 
-  resultData.overallScore >= 1 ? 'Your interview shows potential, but needs significant improvement.' :
-  'Not enough data to provide a comprehensive assessment.'}
-
-## Strengths
-${resultData.strengths.map(strength => `- ${strength}`).join('\n')}
-
-## Areas for Improvement
-${resultData.improvements.map(improvement => `- ${improvement}`).join('\n')}
-
-## Score Breakdown
-- Technical Knowledge: ${resultData.scores.technicalKnowledge.toFixed(1)}/10
-- Communication: ${resultData.scores.communication.toFixed(1)}/10
-- Problem Solving: ${resultData.scores.problemSolving.toFixed(1)}/10
-- Cultural Fit: ${resultData.scores.culturalFit.toFixed(1)}/10
-- Confidence: ${resultData.scores.confidence.toFixed(1)}/10
-- Response Quality: ${resultData.scores.questionQuality.toFixed(1)}/10
-
-## Interview Transcript
-${resultData.transcript.map(entry => 
-  `${entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}: ${entry.text}
-  ${entry.feedback ? `Feedback: ${entry.feedback}` : ''}
-  `
-).join('\n')}
-
-## Recommendation
-${getRecommendedAction()}
-
-Report generated by InterviewAI on ${new Date().toLocaleDateString()}
-    `;
-    
-    // Create a blob from the report content
-    const blob = new Blob([reportContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    
-    // Create a temporary link element to trigger download
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Interview_Report_${new Date().toLocaleDateString().replace(/\//g, '-')}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    
-    // Clean up
-    URL.revokeObjectURL(url);
-    document.body.removeChild(a);
-    
-    toast({
-      title: "Report Downloaded",
-      description: "Your interview report has been downloaded as a text file.",
-      duration: 3000,
-    });
+    try {
+      const doc = new jspdf();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.setTextColor(80, 80, 80);
+      doc.text("Interview Performance Report", 20, 20);
+      
+      // Add horizontal line
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, 25, 190, 25);
+      
+      // Add interview details
+      doc.setFontSize(12);
+      doc.setTextColor(80, 80, 80);
+      doc.text(`Interview Type: ${resultData.title}`, 20, 35);
+      doc.text(`Date: ${resultData.date}`, 20, 42);
+      doc.text(`Duration: ${resultData.duration}`, 20, 49);
+      doc.text(`Overall Score: ${resultData.overallScore.toFixed(1)}/10`, 20, 56);
+      
+      // Add performance summary
+      doc.setFontSize(16);
+      doc.text("Performance Summary", 20, 70);
+      doc.setFontSize(12);
+      doc.text(resultData.overallScore >= 8 ? 
+        'Excellent performance! You demonstrated strong interview skills.' : 
+        resultData.overallScore >= 6 ? 
+        'Good performance with room for improvement in specific areas.' : 
+        resultData.overallScore >= 1 ? 
+        'Your interview shows potential, but needs significant improvement.' :
+        'Not enough data to provide a comprehensive assessment.', 20, 80);
+      
+      // Add strengths
+      doc.setFontSize(16);
+      doc.text("Strengths", 20, 95);
+      doc.setFontSize(12);
+      resultData.strengths.forEach((strength, index) => {
+        doc.text(`• ${strength}`, 25, 105 + (index * 7));
+      });
+      
+      // Add areas for improvement
+      const improvementYStart = 110 + (resultData.strengths.length * 7);
+      doc.setFontSize(16);
+      doc.text("Areas for Improvement", 20, improvementYStart);
+      doc.setFontSize(12);
+      resultData.improvements.forEach((improvement, index) => {
+        doc.text(`• ${improvement}`, 25, improvementYStart + 10 + (index * 7));
+      });
+      
+      // Add score breakdown
+      const scoreYStart = improvementYStart + 20 + (resultData.improvements.length * 7);
+      doc.setFontSize(16);
+      doc.text("Score Breakdown", 20, scoreYStart);
+      doc.setFontSize(12);
+      
+      // Create score table
+      const scoreTableData = Object.entries(resultData.scores).map(([key, value]) => {
+        const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return [formattedKey, `${value.toFixed(1)}/10`];
+      });
+      
+      // @ts-ignore
+      doc.autoTable({
+        startY: scoreYStart + 5,
+        head: [['Category', 'Score']],
+        body: scoreTableData,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [110, 89, 165], // Interview primary color
+          textColor: 255
+        },
+        margin: { left: 20 }
+      });
+      
+      // Add recommendation
+      // @ts-ignore
+      const finalY = doc.lastAutoTable.finalY + 15;
+      doc.setFontSize(16);
+      doc.text("Recommendation", 20, finalY);
+      doc.setFontSize(12);
+      doc.text(getRecommendedAction(), 20, finalY + 10);
+      
+      // Add transcript on new page if there's content
+      if (resultData.transcript.length > 0) {
+        doc.addPage();
+        doc.setFontSize(18);
+        doc.text("Interview Transcript", 20, 20);
+        
+        let yPos = 30;
+        resultData.transcript.forEach((entry, index) => {
+          const speakerText = entry.speaker === 'ai' ? 'AI Interviewer' : 'You';
+          doc.setFontSize(12);
+          doc.setFont(undefined, 'bold');
+          doc.text(speakerText, 20, yPos);
+          
+          doc.setFont(undefined, 'normal');
+          
+          // Split long text into multiple lines to prevent overflow
+          const textLines = doc.splitTextToSize(entry.text, 170);
+          doc.text(textLines, 20, yPos + 7);
+          
+          // Add feedback if available
+          if (entry.feedback) {
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(100, 100, 100);
+            const feedbackText = `Feedback: ${entry.feedback}`;
+            const feedbackLines = doc.splitTextToSize(feedbackText, 160);
+            doc.text(feedbackLines, 25, yPos + 7 + (textLines.length * 7));
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(80, 80, 80);
+            
+            yPos += 15 + (textLines.length * 7) + (feedbackLines.length * 5);
+          } else {
+            yPos += 15 + (textLines.length * 7);
+          }
+          
+          // Add a new page if we're close to the bottom
+          if (yPos > 270 && index < resultData.transcript.length - 1) {
+            doc.addPage();
+            yPos = 20;
+          }
+        });
+      }
+      
+      // Add footer with date
+      const totalPages = doc.getNumberOfPages();
+      for(let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Report generated by InterviewAI on ${new Date().toLocaleDateString()}`, 20, 285);
+        doc.text(`Page ${i} of ${totalPages}`, 170, 285);
+      }
+      
+      // Save the PDF
+      doc.save(`Interview_Report_${resultData.date.replace(/\s/g, '_')}.pdf`);
+      
+      toast({
+        title: "Report Downloaded",
+        description: "Your interview report has been downloaded as a PDF file.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Download Failed",
+        description: "There was an error generating your report. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    }
   };
 
   return (

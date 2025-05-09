@@ -16,6 +16,12 @@ interface Interview {
   type: 'technical' | 'behavioral';
   completed: boolean;
   score?: number;
+  results?: {
+    overallScore: number;
+    strengths: string[];
+    improvements: string[];
+    completedAt: string;
+  };
 }
 
 const Dashboard = () => {
@@ -31,7 +37,13 @@ const Dashboard = () => {
       role: 'Senior Frontend Developer',
       type: 'technical',
       completed: true,
-      score: 8.5
+      score: 8.5,
+      results: {
+        overallScore: 8.5,
+        strengths: ['Demonstrated solid technical knowledge', 'Clear communication'],
+        improvements: ['Provide more specific examples'],
+        completedAt: '2025-05-07T14:32:00Z'
+      }
     },
     {
       id: '2',
@@ -41,7 +53,13 @@ const Dashboard = () => {
       role: 'React Developer',
       type: 'technical',
       completed: true,
-      score: 7.8
+      score: 7.8,
+      results: {
+        overallScore: 7.8,
+        strengths: ['Good React knowledge', 'Structured answers'],
+        improvements: ['Elaborate more on solutions'],
+        completedAt: '2025-05-04T10:15:00Z'
+      }
     },
     {
       id: '3',
@@ -58,6 +76,41 @@ const Dashboard = () => {
     navigate('/interview/new');
   };
 
+  // Check local storage for any new interview results
+  useEffect(() => {
+    const storedInterviews = localStorage.getItem('interviewResults');
+    if (storedInterviews) {
+      try {
+        const parsedInterviews = JSON.parse(storedInterviews);
+        const updatedInterviews = [...interviews];
+        
+        // Update or add new interview results
+        parsedInterviews.forEach((storedInterview: any) => {
+          const existingIndex = updatedInterviews.findIndex(i => i.id === storedInterview.id);
+          
+          if (existingIndex >= 0) {
+            updatedInterviews[existingIndex] = {
+              ...updatedInterviews[existingIndex],
+              ...storedInterview,
+              completed: true,
+              score: storedInterview.results?.overallScore || 0
+            };
+          } else {
+            updatedInterviews.push({
+              ...storedInterview,
+              completed: true,
+              score: storedInterview.results?.overallScore || 0
+            });
+          }
+        });
+        
+        setInterviews(updatedInterviews);
+      } catch (error) {
+        console.error('Error parsing stored interviews:', error);
+      }
+    }
+  }, []);
+  
   // Calculate metrics
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;

@@ -13,7 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, BarChart } from 'lucide-react';
 
-// Mock interview data (will be replaced with actual data from backend)
 interface Interview {
   id: string;
   title: string;
@@ -23,6 +22,12 @@ interface Interview {
   type: 'technical' | 'behavioral';
   completed: boolean;
   score?: number;
+  results?: {
+    overallScore: number;
+    strengths: string[];
+    improvements: string[];
+    completedAt: string;
+  };
 }
 
 interface InterviewHistoryProps {
@@ -74,7 +79,7 @@ export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
               <div className="mt-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Overall Score</span>
-                  <span className="text-interview-primary font-bold">{interview.score}/10</span>
+                  <span className="text-interview-primary font-bold">{interview.score.toFixed(1)}/10</span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2 mt-1">
                   <div 
@@ -88,7 +93,12 @@ export const InterviewHistory = ({ interviews }: InterviewHistoryProps) => {
           <CardFooter className="pt-0 flex justify-between">
             {interview.completed ? (
               <Button asChild variant="outline">
-                <Link to={`/results/${interview.id}`}>
+                <Link to={`/results/${interview.id}`} state={{ 
+                  interviewData: interview,
+                  overallScore: interview.score || 0,
+                  results: interview.results,
+                  completedAt: interview.results?.completedAt || new Date().toISOString(),
+                }}>
                   <BarChart className="mr-2 h-4 w-4" />
                   View Results
                 </Link>
