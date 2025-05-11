@@ -9,8 +9,9 @@ import { BarChart2, MessagesSquare, ScrollText, Download, FileText } from 'lucid
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import jspdf from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
+import { generatePdfReport } from '@/services/ai-interview-service';
 
 const ResultsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -335,7 +336,7 @@ const ResultsPage = () => {
   // Generate PDF report
   const handleDownloadReport = () => {
     try {
-      const doc = new jspdf();
+      const doc = new jsPDF();
       
       // Add title
       doc.setFontSize(20);
