@@ -33,8 +33,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth event:', event);
         setSession(session);
         setCurrentUser(session?.user ?? null);
+        
+        // Handle email confirmation event
+        if (event === 'USER_UPDATED' && session) {
+          // Check if this was an email confirmation
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('type') === 'email_confirmation') {
+            toast({
+              title: 'Email confirmed',
+              description: 'Your email has been successfully confirmed. You are now logged in.',
+            });
+            
+            // Remove the query parameters
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Navigate to dashboard
+            navigate('/dashboard');
+          }
+        }
         
         // If user signs out, clear any user-specific data from localStorage
         if (event === 'SIGNED_OUT') {
@@ -87,10 +106,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
+    // Handle direct email confirmation links
+    const handleEmailConfirmation = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const type = urlParams.get('type');
+      if (type === 'recovery' || type === 'email_confirmation') {
+        const accessToken = urlParams.get('access_token');
+        const refreshToken = urlParams.get('refresh_token');
+        
+        if (accessToken && refreshToken) {
+          try {
+            // Set the session from the URL parameters
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+            
+            if (error) throw error;
+            
+            if (data.session) {
+              setSession(data.session);
+              setCurrentUser(data.session.user);
+              
+              toast({
+                title: type === 'recovery' ? 'Password Reset Successful' : 'Email Confirmed',
+                description: type === 'recovery' 
+                  ? 'Your password has been reset successfully.' 
+                  : 'Your email has been confirmed successfully.',
+              });
+              
+              // Navigate to dashboard and clean up URL
+              window.history.replaceState({}, document.title, '/');
+              navigate('/login');
+            }
+          } catch (error) {
+            console.error('Error handling email confirmation:', error);
+            toast({
+              title: 'Authentication Error',
+              description: 'There was a problem processing your request. Please try logging in manually.',
+              variant: 'destructive',
+            });
+            navigate('/login');
+          }
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate, toast]);
 
   // Login function using Supabase
   const login = async (email: string, password: string) => {
@@ -203,6 +270,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: 'Logged out',
         description: 'You have been successfully logged out.',
       });
+      
+      // Clear user state
+      setCurrentUser(null);
+      setSession(null);
       
       // Navigate to home page
       navigate('/');

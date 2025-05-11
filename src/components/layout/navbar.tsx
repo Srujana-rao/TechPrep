@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ButtonLink } from '@/components/ui/button-link';
 import { Mic, Menu, X, User } from 'lucide-react';
@@ -13,12 +13,22 @@ interface NavbarProps {
 export const Navbar = ({ isAuthenticated }: NavbarProps = {}) => {
   const { currentUser, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const navigate = useNavigate();
 
   // Use the prop if provided, otherwise use the currentUser from context
   const isLoggedIn = isAuthenticated !== undefined ? isAuthenticated : !!currentUser;
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Navigation is now handled inside the logout function in auth-context.tsx
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -40,7 +50,7 @@ export const Navbar = ({ isAuthenticated }: NavbarProps = {}) => {
               <ButtonLink href="/dashboard" variant="outline">
                 Dashboard
               </ButtonLink>
-              <Button onClick={logout} variant="ghost">
+              <Button onClick={handleLogout} variant="ghost">
                 Logout
               </Button>
               <div className="flex items-center space-x-1">
@@ -79,7 +89,7 @@ export const Navbar = ({ isAuthenticated }: NavbarProps = {}) => {
                 <Link to="/dashboard" className="text-gray-700 hover:text-interview-primary transition-colors">
                   Dashboard
                 </Link>
-                <Button onClick={logout} variant="ghost" className="justify-start px-0">
+                <Button onClick={handleLogout} variant="ghost" className="justify-start px-0">
                   Logout
                 </Button>
                 <div className="flex items-center space-x-1">
