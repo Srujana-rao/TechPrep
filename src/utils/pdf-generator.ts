@@ -130,7 +130,9 @@ export const generatePdf = (interview: Interview) => {
 
   // Areas for Improvement
   if (interview.results?.improvements && interview.results.improvements.length > 0) {
-    const currentY = doc.lastAutoTable?.finalY || 160;
+    // Use the result of autoTable directly instead of accessing lastAutoTable
+    const previousTableResult = doc.autoTableEndPosY();
+    const currentY = previousTableResult || 160;
     
     doc.setFontSize(14);
     doc.setTextColor(41, 37, 36);
