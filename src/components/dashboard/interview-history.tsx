@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -63,7 +62,10 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
 
   const handleDownloadPdf = (interview: Interview) => {
     try {
-      generatePdf(interview);
+      generatePdf({
+        ...interview,
+        score: interview.score || interview.results?.overallScore || 0,
+      });
       toast({
         title: "Report generated",
         description: "Your interview report has been downloaded.",

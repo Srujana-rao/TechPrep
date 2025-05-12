@@ -76,19 +76,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (storedInterviews) {
                 const parsedInterviews = JSON.parse(storedInterviews);
                 
-                // Find any interviews that may belong to this user but don't have user_id set
-                const hasUnassignedInterviews = parsedInterviews.some(
-                  (interview: any) => !interview.user_id
-                );
-                
-                if (hasUnassignedInterviews) {
-                  // Update unassigned interviews with this user's ID
-                  const updatedInterviews = parsedInterviews.map((interview: any) => 
-                    interview.user_id ? interview : { ...interview, user_id: session.user.id }
+                if (Array.isArray(parsedInterviews)) {
+                  // Find any interviews that may belong to this user but don't have user_id set
+                  const hasUnassignedInterviews = parsedInterviews.some(
+                    (interview: any) => !interview.user_id
                   );
                   
-                  localStorage.setItem('interviewResults', JSON.stringify(updatedInterviews));
-                  console.log('Updated unassigned interviews with user ID');
+                  if (hasUnassignedInterviews) {
+                    // Update unassigned interviews with this user's ID
+                    const updatedInterviews = parsedInterviews.map((interview: any) => 
+                      interview.user_id ? interview : { ...interview, user_id: session.user.id }
+                    );
+                    
+                    localStorage.setItem('interviewResults', JSON.stringify(updatedInterviews));
+                    console.log('Updated unassigned interviews with user ID');
+                  }
                 }
               }
             } catch (error) {

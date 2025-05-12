@@ -81,18 +81,6 @@ export const generatePdf = (interview: Interview) => {
   // Performance Score
   const score = interview.score || interview.results?.overallScore || 0;
   
-  doc.setFontSize(14);
-  doc.setTextColor(41, 37, 36);
-  doc.text('Performance Score', 20, 90);
-  
-  doc.setFontSize(24);
-  doc.setTextColor(
-    score >= 8 ? 34 : score >= 6 ? 146 : 220,
-    score >= 8 ? 197 : score >= 6 ? 126 : 38,
-    score >= 8 ? 94 : score >= 6 ? 34 : 34
-  );
-  doc.text(`${score.toFixed(1)}/10`, 20, 105);
-  
   // Performance score background
   doc.setFillColor(237, 233, 254);
   doc.roundedRect(15, 85, 180, 30, 3, 3, 'F');
@@ -102,18 +90,20 @@ export const generatePdf = (interview: Interview) => {
   doc.setFontSize(24);
   doc.text(`${score.toFixed(1)}/10`, 160, 95, { align: 'right' });
   
+  let lastY = 130;
+  
   // Strengths
   if (interview.results?.strengths && interview.results.strengths.length > 0) {
     doc.setFontSize(14);
     doc.setTextColor(41, 37, 36);
-    doc.text('Strengths', 20, 130);
+    doc.text('Strengths', 20, lastY);
     
     const strengths = interview.results.strengths.map((strength, index) => [
       `${index + 1}.`, strength
     ]);
     
     const strengthsTable = autoTable(doc, {
-      startY: 135,
+      startY: lastY + 5,
       head: [],
       body: strengths,
       theme: 'plain',
@@ -126,29 +116,27 @@ export const generatePdf = (interview: Interview) => {
         1: { cellWidth: 170 }
       }
     });
+    
+    // Update the Y position for the next section - use the finalY from the table
+    if (strengthsTable.lastAutoTable && strengthsTable.lastAutoTable.finalY) {
+      lastY = strengthsTable.lastAutoTable.finalY + 15;
+    } else {
+      lastY += 25 + (strengths.length * 10);
+    }
   }
 
   // Areas for Improvement
   if (interview.results?.improvements && interview.results.improvements.length > 0) {
-    // Get the final Y position of the last table correctly
-    let currentY = 160;
-    
-    // Get the last table's Y position using the jspdf-autotable API
-    const tables = (doc as any).autoTable.previous;
-    if (tables && tables.finalY) {
-      currentY = tables.finalY + 15;
-    }
-    
     doc.setFontSize(14);
     doc.setTextColor(41, 37, 36);
-    doc.text('Areas for Improvement', 20, currentY);
+    doc.text('Areas for Improvement', 20, lastY);
     
     const improvements = interview.results.improvements.map((improvement, index) => [
       `${index + 1}.`, improvement
     ]);
     
     autoTable(doc, {
-      startY: currentY + 5,
+      startY: lastY + 5,
       head: [],
       body: improvements,
       theme: 'plain',

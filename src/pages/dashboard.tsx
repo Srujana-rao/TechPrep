@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
@@ -57,17 +56,17 @@ const Dashboard = () => {
             console.log('All stored interviews:', parsedInterviews);
             
             // Filter to only include interviews for the current user
-            userInterviews = parsedInterviews.filter(
+            userInterviews = Array.isArray(parsedInterviews) ? parsedInterviews.filter(
               (interview: any) => interview.user_id === currentUser.id
-            );
+            ) : [];
             
             console.log('Filtered user interviews:', userInterviews);
             
             // If there are interviews without user_id but were created while this user was logged in,
             // associate them with the current user
-            const unassociatedInterviews = parsedInterviews.filter(
+            const unassociatedInterviews = Array.isArray(parsedInterviews) ? parsedInterviews.filter(
               (interview: any) => !interview.user_id
-            );
+            ) : [];
             
             if (unassociatedInterviews.length > 0) {
               // Assign the current user to these interviews
@@ -77,9 +76,9 @@ const Dashboard = () => {
               }));
               
               // Update these interviews in localStorage
-              const updatedAllInterviews = parsedInterviews.map((interview: any) => 
+              const updatedAllInterviews = Array.isArray(parsedInterviews) ? parsedInterviews.map((interview: any) => 
                 interview.user_id ? interview : { ...interview, user_id: currentUser.id }
-              );
+              ) : [];
               
               localStorage.setItem('interviewResults', JSON.stringify(updatedAllInterviews));
               
@@ -120,10 +119,12 @@ const Dashboard = () => {
       const storedInterviews = localStorage.getItem('interviewResults');
       if (storedInterviews) {
         const parsedInterviews = JSON.parse(storedInterviews);
-        const updatedStoredInterviews = parsedInterviews.filter(
-          (interview: any) => interview.id !== id
-        );
-        localStorage.setItem('interviewResults', JSON.stringify(updatedStoredInterviews));
+        if (Array.isArray(parsedInterviews)) {
+          const updatedStoredInterviews = parsedInterviews.filter(
+            (interview: any) => interview.id !== id
+          );
+          localStorage.setItem('interviewResults', JSON.stringify(updatedStoredInterviews));
+        }
       }
     } catch (error) {
       console.error('Error updating localStorage after delete:', error);
