@@ -130,20 +130,25 @@ export const generatePdf = (interview: Interview) => {
 
   // Areas for Improvement
   if (interview.results?.improvements && interview.results.improvements.length > 0) {
-    // Use the result of autoTable directly instead of accessing lastAutoTable
-    const previousTableResult = doc.autoTableEndPosY();
-    const currentY = previousTableResult || 160;
+    // Get the final Y position of the last table correctly
+    let currentY = 160;
+    
+    // The correct way to get the Y position after the table
+    // Use the result from the previous autoTable call
+    if (doc.previousAutoTable) {
+      currentY = doc.previousAutoTable.finalY + 15;
+    }
     
     doc.setFontSize(14);
     doc.setTextColor(41, 37, 36);
-    doc.text('Areas for Improvement', 20, currentY + 15);
+    doc.text('Areas for Improvement', 20, currentY);
     
     const improvements = interview.results.improvements.map((improvement, index) => [
       `${index + 1}.`, improvement
     ]);
     
     autoTable(doc, {
-      startY: currentY + 20,
+      startY: currentY + 5,
       head: [],
       body: improvements,
       theme: 'plain',
