@@ -1,172 +1,193 @@
 
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
 
-interface InterviewResults {
-  overallScore: number;
-  strengths: string[];
-  improvements: string[];
-  completedAt: string;
-}
+// Helper function to format date
+const formatDate = (date: string | Date): string => {
+  return format(new Date(date), 'MMMM d, yyyy');
+};
 
-interface Interview {
-  id: string;
-  title: string;
-  date: string;
-  duration: string;
-  role: string;
-  position?: string;
-  type: 'technical' | 'behavioral' | 'mixed';
-  completed: boolean;
-  score?: number;
-  results?: InterviewResults;
-}
-
-export const generatePdf = (interview: Interview) => {
+// Function to create interview PDF
+export const generateInterviewPDF = (interviewData: any): jsPDF => {
   // Create a new PDF document
-  const doc = new jsPDF();
-  
-  // Set document properties
-  doc.setProperties({
-    title: `Interview Report - ${interview.title}`,
-    subject: 'Interview Performance Report',
-    author: 'InterviewAI',
-    creator: 'InterviewAI Application'
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
   });
+
+  // Set font styles
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(44, 62, 80); // Dark blue text
 
   // Add header
-  doc.setFontSize(22);
-  doc.setTextColor(41, 37, 36); // Dark gray
-  doc.text('Interview Performance Report', 105, 20, { align: 'center' });
-  
-  // Add logo placeholder
-  // This would normally be an image, but we'll just draw a colored rectangle
-  doc.setFillColor(79, 70, 229); // Indigo color
-  doc.rect(20, 10, 30, 15, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(12);
-  doc.text('InterviewAI', 35, 20, { align: 'center' });
-
-  // Interview details section
-  doc.setFontSize(14);
-  doc.setTextColor(41, 37, 36);
-  doc.text('Interview Details', 20, 40);
-  
-  doc.setFontSize(10);
-  doc.setTextColor(75, 85, 99);
-  
-  const detailsData = [
-    ['Title', interview.title],
-    ['Role', interview.position || interview.role],
-    ['Date', interview.date],
-    ['Duration', interview.duration],
-    ['Type', interview.type.charAt(0).toUpperCase() + interview.type.slice(1)]
-  ];
-  
-  autoTable(doc, {
-    startY: 45,
-    head: [],
-    body: detailsData,
-    theme: 'plain',
-    styles: {
-      cellPadding: 2,
-      fontSize: 10
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 30 },
-      1: { cellWidth: 150 }
-    }
-  });
-
-  // Performance Score
-  const score = interview.score || interview.results?.overallScore || 0;
-  
-  // Performance score background
-  doc.setFillColor(237, 233, 254);
-  doc.roundedRect(15, 85, 180, 30, 3, 3, 'F');
-  doc.setTextColor(79, 70, 229);
-  doc.setFontSize(14);
-  doc.text('Performance Score', 20, 95);
   doc.setFontSize(24);
-  doc.text(`${score.toFixed(1)}/10`, 160, 95, { align: 'right' });
+  doc.text('Interview Feedback', 20, 20);
   
-  let lastY = 130;
+  // Add date
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const currentDate = formatDate(interviewData.date || new Date());
+  doc.text(`Generated on ${currentDate}`, 20, 30);
+
+  // Add horizontal line
+  doc.setDrawColor(41, 128, 185); // Blue line
+  doc.setLineWidth(0.5);
+  doc.line(20, 35, 190, 35);
+
+  // Add interview information
+  let lastY = 45; // Starting Y position
   
-  // Strengths
-  if (interview.results?.strengths && interview.results.strengths.length > 0) {
-    doc.setFontSize(14);
-    doc.setTextColor(41, 37, 36);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Interview Details', 20, lastY);
+  lastY += 8;
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  
+  // Role
+  doc.setFont('helvetica', 'bold');
+  doc.text('Position:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.role || 'Not specified', 60, lastY);
+  lastY += 8;
+  
+  // Type
+  doc.setFont('helvetica', 'bold');
+  doc.text('Interview Type:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.type || 'Not specified', 60, lastY);
+  lastY += 8;
+  
+  // Duration
+  doc.setFont('helvetica', 'bold');
+  doc.text('Duration:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.duration || 'Not specified', 60, lastY);
+  lastY += 15; // Add space before next section
+  
+  // Score section
+  if (interviewData.results && interviewData.results.overallScore) {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Overall Score', 20, lastY);
+    lastY += 8;
+    
+    doc.setFontSize(24);
+    doc.setTextColor(41, 128, 185); // Blue text for score
+    const score = `${interviewData.results.overallScore}/100`;
+    doc.text(score, 20, lastY);
+    doc.setTextColor(44, 62, 80); // Reset text color
+    lastY += 15;
+  }
+  
+  // Strengths section
+  if (interviewData.results && interviewData.results.strengths && interviewData.results.strengths.length > 0) {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
     doc.text('Strengths', 20, lastY);
+    lastY += 8;
     
-    const strengths = interview.results.strengths.map((strength, index) => [
-      `${index + 1}.`, strength
-    ]);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
     
-    const strengthsTable = autoTable(doc, {
-      startY: lastY + 5,
-      head: [],
-      body: strengths,
-      theme: 'plain',
-      styles: {
-        cellPadding: 2,
-        fontSize: 10
+    const strengths = interviewData.results.strengths;
+    
+    // Use autoTable for strengths list
+    const strengthsTableOutput = autoTable(doc, {
+      startY: lastY,
+      head: [['Strengths']],
+      body: strengths.map((strength: string) => [strength]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [231, 247, 255],
+        textColor: [44, 62, 80],
+        fontStyle: 'bold'
       },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 170 }
-      }
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 4,
+        cellWidth: 'auto'
+      },
+      margin: { left: 20, right: 20 }
     });
     
     // Update the Y position for the next section
-    if (strengthsTable && typeof strengthsTable === 'object' && 'finalY' in strengthsTable) {
-      lastY = strengthsTable.finalY + 15;
+    if (strengthsTableOutput && typeof strengthsTableOutput === 'object' && 'lastEndPageNumber' in strengthsTableOutput) {
+      const finalY = (strengthsTableOutput as any).finalY;
+      if (finalY) {
+        lastY = finalY + 15;
+      } else {
+        lastY += 25 + (strengths.length * 10);
+      }
     } else {
       lastY += 25 + (strengths.length * 10);
     }
   }
-
-  // Areas for Improvement
-  if (interview.results?.improvements && interview.results.improvements.length > 0) {
-    doc.setFontSize(14);
-    doc.setTextColor(41, 37, 36);
+  
+  // Areas for improvement section
+  if (interviewData.results && interviewData.results.improvements && interviewData.results.improvements.length > 0) {
+    // Check if we need a new page
+    if (lastY > 250) {
+      doc.addPage();
+      lastY = 20;
+    }
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
     doc.text('Areas for Improvement', 20, lastY);
+    lastY += 8;
     
-    const improvements = interview.results.improvements.map((improvement, index) => [
-      `${index + 1}.`, improvement
-    ]);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
     
-    autoTable(doc, {
-      startY: lastY + 5,
-      head: [],
-      body: improvements,
-      theme: 'plain',
-      styles: {
-        cellPadding: 2,
-        fontSize: 10
+    const improvements = interviewData.results.improvements;
+    
+    // Use autoTable for improvements list
+    const improvementsTableOutput = autoTable(doc, {
+      startY: lastY,
+      head: [['Areas for Improvement']],
+      body: improvements.map((improvement: string) => [improvement]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [255, 243, 224],
+        textColor: [44, 62, 80],
+        fontStyle: 'bold'
       },
-      columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 170 }
-      }
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 4,
+        cellWidth: 'auto'
+      },
+      margin: { left: 20, right: 20 }
     });
+    
+    // Update the Y position for the next section
+    if (improvementsTableOutput && typeof improvementsTableOutput === 'object' && 'lastEndPageNumber' in improvementsTableOutput) {
+      const finalY = (improvementsTableOutput as any).finalY;
+      if (finalY) {
+        lastY = finalY + 15;
+      } else {
+        lastY += 25 + (improvements.length * 10);
+      }
+    } else {
+      lastY += 25 + (improvements.length * 10);
+    }
   }
   
   // Footer
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setTextColor(150, 150, 150);
-    doc.text(
-      `Generated by InterviewAI | ${new Date().toLocaleDateString()}`,
-      105, 
-      285, 
-      { align: 'center' }
-    );
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(128, 128, 128);
+    doc.text('Generated by InterviewAI', 20, 290);
+    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
   }
-  
-  // Save the PDF with the interview title
-  doc.save(`InterviewAI-Report-${interview.title.replace(/\s+/g, '-')}.pdf`);
   
   return doc;
 };
+
