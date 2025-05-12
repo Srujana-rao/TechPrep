@@ -133,11 +133,10 @@ export const generatePdf = (interview: Interview) => {
     // Get the final Y position of the last table correctly
     let currentY = 160;
     
-    // Get the last table's end position from the return value of autoTable
-    // which contains finalY property
-    const lastTable = doc.lastAutoTable;
-    if (lastTable) {
-      currentY = lastTable.finalY + 15;
+    // Get the last table's Y position using the jspdf-autotable API
+    const tables = (doc as any).autoTable.previous;
+    if (tables && tables.finalY) {
+      currentY = tables.finalY + 15;
     }
     
     doc.setFontSize(14);

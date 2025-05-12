@@ -34,6 +34,7 @@ const InterviewPage = () => {
   const [userResponses, setUserResponses] = useState<string[]>([]);
   const [interviewData, setInterviewData] = useState<any>(null);
   const [customQuestions, setCustomQuestions] = useState<string[]>([]);
+  const [isRecognizing, setIsRecognizing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -42,6 +43,7 @@ const InterviewPage = () => {
   const animationFrameRef = useRef<number | null>(null);
   const recognitionRef = useRef<any>(null);
   const transcriptRef = useRef<string>('');
+  const startTimeRef = useRef<Date | null>(null);
 
   // Initialize with interview data
   useEffect(() => {
@@ -71,6 +73,9 @@ const InterviewPage = () => {
         setupAudioAnalyser();
         setupSpeechRecognition();
       }
+
+      // Start tracking interview time
+      startTimeRef.current = new Date();
     }
     
     return () => {
@@ -147,22 +152,45 @@ const InterviewPage = () => {
     recognition.continuous = true;
     recognition.interimResults = true;
     
+    recognition.onstart = () => {
+      setIsRecognizing(true);
+    };
+    
     recognition.onresult = (event: any) => {
       let transcript = '';
+      let isFinal = false;
+      
+      // Process all results including interim ones
       for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript + ' ';
         if (event.results[i].isFinal) {
-          transcript += event.results[i][0].transcript + ' ';
+          isFinal = true;
         }
       }
       
       if (transcript.trim()) {
-        transcriptRef.current = transcript;
-        setUserResponse(transcript);
+        // Update the transcript reference
+        transcriptRef.current = transcript.trim();
+        setUserResponse(prev => {
+          // If it's a final result, append space for the next phrase
+          // Otherwise just update with current transcript
+          return isFinal ? prev + transcript + " " : transcript;
+        });
+        setIsListening(true);
+      }
+    };
+    
+    recognition.onend = () => {
+      setIsRecognizing(false);
+      // If still in interview, restart recognition
+      if (isInProgress && !interviewComplete && isAudioEnabled) {
+        recognition.start();
       }
     };
     
     recognition.onerror = (event: any) => {
       console.error('Speech recognition error:', event.error);
+      setIsRecognizing(false);
       
       toast({
         title: "Speech recognition error",
@@ -170,9 +198,24 @@ const InterviewPage = () => {
         variant: "destructive",
         duration: 5000,
       });
+      
+      // Try to restart after error
+      if (isInProgress && !interviewComplete && isAudioEnabled) {
+        setTimeout(() => {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.error("Couldn't restart speech recognition", e);
+          }
+        }, 1000);
+      }
     };
     
-    recognition.start();
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error("Couldn't start speech recognition", error);
+    }
   };
   
   // Set up audio analyser for visualization
@@ -306,6 +349,9 @@ const InterviewPage = () => {
         text: `Welcome to your ${interviewData?.position || ''} interview. I'll be asking you questions tailored to your profile and skills. Let's get started.` 
       }
     ]);
+    
+    // Start tracking interview time
+    startTimeRef.current = new Date();
     
     // Simulate AI speaking
     setIsSpeaking(true);
@@ -489,6 +535,14 @@ const InterviewPage = () => {
       duration: 3000,
     });
 
+    // Calculate accurate interview duration
+    let interviewDuration = '1 minute';
+    if (startTimeRef.current) {
+      const endTime = new Date();
+      const durationInMinutes = Math.max(1, Math.round((endTime.getTime() - startTimeRef.current.getTime()) / (1000 * 60)));
+      interviewDuration = `${durationInMinutes} minute${durationInMinutes !== 1 ? 's' : ''}`;
+    }
+
     // Generate strengths and improvements based on actual responses
     let strengths = [];
     let improvements = [];
@@ -549,7 +603,7 @@ const InterviewPage = () => {
       title: interviewData?.title || 'Interview Practice',
       position: interviewData?.position || 'Not Specified',
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      duration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '1 minute',
+      duration: interviewDuration,
       role: interviewData?.position || 'Professional',
       type: (interviewData?.interviewType || 'technical') as 'technical' | 'behavioral',
       completed: true,
@@ -608,7 +662,7 @@ const InterviewPage = () => {
           questionsAsked: questionsAsked,
           userResponses: userResponses,
           completedAt: new Date().toISOString(),
-          interviewDuration: questionsAsked > 0 ? `${Math.floor(Math.random() * 10) + 5} minutes` : '1 minute'
+          interviewDuration: interviewDuration
         } 
       });
     }, 3000);
@@ -636,6 +690,25 @@ const InterviewPage = () => {
       return <Mic className="text-green-500 animate-pulse" />;
     }
     return <Mic />;
+  };
+
+  // Helper function to manually toggle speech recognition
+  const toggleSpeechRecognition = () => {
+    if (recognitionRef.current) {
+      if (isRecognizing) {
+        recognitionRef.current.stop();
+        setIsRecognizing(false);
+      } else {
+        try {
+          recognitionRef.current.start();
+          setIsRecognizing(true);
+        } catch (e) {
+          console.error("Couldn't restart speech recognition", e);
+        }
+      }
+    } else {
+      setupSpeechRecognition();
+    }
   };
 
   return (
@@ -681,6 +754,11 @@ const InterviewPage = () => {
                   {isSpeaking && (
                     <div className="ml-auto px-2 py-1 bg-interview-primary text-white text-xs rounded-md animate-pulse">
                       AI Speaking...
+                    </div>
+                  )}
+                  {isRecognizing && (
+                    <div className="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded-md animate-pulse">
+                      Listening...
                     </div>
                   )}
                 </div>
@@ -749,11 +827,21 @@ const InterviewPage = () => {
                             onChange={(e) => setUserResponse(e.target.value)}
                             disabled={!isInProgress || isProcessing || interviewComplete}
                           />
-                          {isListening && isAudioEnabled && (
-                            <div className="absolute right-3 top-3 bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs animate-pulse">
-                              Listening...
-                            </div>
-                          )}
+                          <div className="absolute right-3 top-3 flex space-x-2">
+                            {isRecognizing && (
+                              <div className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs animate-pulse">
+                                Listening...
+                              </div>
+                            )}
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={toggleSpeechRecognition}
+                              disabled={!isAudioEnabled}
+                            >
+                              {isRecognizing ? "Stop" : "Start"} Voice Input
+                            </Button>
+                          </div>
                         </div>
                         <Button 
                           className="self-end bg-interview-primary hover:bg-interview-primary/90"
