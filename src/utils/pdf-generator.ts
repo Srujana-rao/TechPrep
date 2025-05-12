@@ -115,13 +115,9 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (strengthsTableOutput && typeof strengthsTableOutput === 'object' && 'lastEndPageNumber' in strengthsTableOutput) {
-      const finalY = (strengthsTableOutput as any).finalY;
-      if (finalY) {
-        lastY = finalY + 15;
-      } else {
-        lastY += 25 + (strengths.length * 10);
-      }
+    const finalY = (strengthsTableOutput as any).finalY;
+    if (typeof finalY === 'number') {
+      lastY = finalY + 15;
     } else {
       lastY += 25 + (strengths.length * 10);
     }
@@ -165,13 +161,9 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (improvementsTableOutput && typeof improvementsTableOutput === 'object' && 'lastEndPageNumber' in improvementsTableOutput) {
-      const finalY = (improvementsTableOutput as any).finalY;
-      if (finalY) {
-        lastY = finalY + 15;
-      } else {
-        lastY += 25 + (improvements.length * 10);
-      }
+    const finalY = (improvementsTableOutput as any).finalY;
+    if (typeof finalY === 'number') {
+      lastY = finalY + 15;
     } else {
       lastY += 25 + (improvements.length * 10);
     }
@@ -191,3 +183,8 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
   return doc;
 };
 
+// Export a function to generate and save the PDF
+export const generatePdf = (interviewData: any): void => {
+  const doc = generateInterviewPDF(interviewData);
+  doc.save(`interview-feedback-${new Date().getTime()}.pdf`);
+};
