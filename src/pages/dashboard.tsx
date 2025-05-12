@@ -15,7 +15,7 @@ interface Interview {
   date: string;
   duration: string;
   role: string;
-  type: 'technical' | 'behavioral';
+  type: 'technical' | 'behavioral' | 'mixed';
   completed: boolean;
   score?: number;
   results?: {
@@ -44,6 +44,7 @@ const Dashboard = () => {
       }
       
       setIsLoading(true);
+      console.log('Fetching interviews for user:', currentUser.id);
       
       try {
         // Check localStorage for any pending/recent interviews for this user
@@ -53,11 +54,14 @@ const Dashboard = () => {
         if (storedInterviews) {
           try {
             const parsedInterviews = JSON.parse(storedInterviews);
+            console.log('All stored interviews:', parsedInterviews);
             
             // Filter to only include interviews for the current user
             userInterviews = parsedInterviews.filter(
               (interview: any) => interview.user_id === currentUser.id
             );
+            
+            console.log('Filtered user interviews:', userInterviews);
             
             // If there are interviews without user_id but were created while this user was logged in,
             // associate them with the current user
@@ -81,10 +85,13 @@ const Dashboard = () => {
               
               // Add these now-associated interviews to the user's interviews
               userInterviews = [...userInterviews, ...updatedInterviews];
+              console.log('Updated with unassociated interviews:', userInterviews);
             }
           } catch (error) {
             console.error('Error parsing stored interviews:', error);
           }
+        } else {
+          console.log('No stored interviews found in localStorage');
         }
         
         setInterviews(userInterviews);

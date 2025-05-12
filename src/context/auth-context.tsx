@@ -136,8 +136,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               });
               
               // Navigate to dashboard and clean up URL
-              window.history.replaceState({}, document.title, '/');
-              navigate('/login');
+              window.history.replaceState({}, document.title, '/dashboard');
+              navigate('/dashboard');
             }
           } catch (error) {
             console.error('Error handling email confirmation:', error);
@@ -217,7 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             name,
           },
-          emailRedirectTo: window.location.origin + '/login',
+          emailRedirectTo: window.location.origin + '/dashboard',
         },
       });
       

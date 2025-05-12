@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, BarChart, Trash2 } from 'lucide-react';
+import { Calendar, Clock, BarChart, Trash2, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { generatePdf } from '@/utils/pdf-generator';
 
 interface Interview {
   id: string;
@@ -56,6 +57,23 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
       toast({
         title: "Interview deleted",
         description: "The interview has been successfully deleted.",
+      });
+    }
+  };
+
+  const handleDownloadPdf = (interview: Interview) => {
+    try {
+      generatePdf(interview);
+      toast({
+        title: "Report generated",
+        description: "Your interview report has been downloaded.",
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast({
+        title: "Error generating report",
+        description: "There was a problem generating your PDF report.",
+        variant: "destructive",
       });
     }
   };
@@ -152,17 +170,27 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
           </CardContent>
           <CardFooter className="pt-0 flex justify-between">
             {interview.completed ? (
-              <Button asChild variant="outline">
-                <Link to={`/results/${interview.id}`} state={{ 
-                  interviewData: interview,
-                  overallScore: interview.score || 0,
-                  results: interview.results,
-                  completedAt: interview.results?.completedAt || new Date().toISOString(),
-                }}>
-                  <BarChart className="mr-2 h-4 w-4" />
-                  View Results
-                </Link>
-              </Button>
+              <div className="flex space-x-2 w-full justify-between">
+                <Button asChild variant="outline">
+                  <Link to={`/results/${interview.id}`} state={{ 
+                    interviewData: interview,
+                    overallScore: interview.score || 0,
+                    results: interview.results,
+                    completedAt: interview.results?.completedAt || new Date().toISOString(),
+                  }}>
+                    <BarChart className="mr-2 h-4 w-4" />
+                    View Results
+                  </Link>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleDownloadPdf(interview)}
+                  className="border-interview-primary text-interview-primary hover:bg-interview-primary/10"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Download PDF
+                </Button>
+              </div>
             ) : (
               <Button asChild>
                 <Link to={`/interview/${interview.id}`}>
