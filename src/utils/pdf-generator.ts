@@ -117,9 +117,9 @@ export const generatePdf = (interview: Interview) => {
       }
     });
     
-    // Update the Y position for the next section - use the finalY from the table
-    if (strengthsTable.lastAutoTable && strengthsTable.lastAutoTable.finalY) {
-      lastY = strengthsTable.lastAutoTable.finalY + 15;
+    // Update the Y position for the next section
+    if (strengthsTable && typeof strengthsTable === 'object' && 'finalY' in strengthsTable) {
+      lastY = strengthsTable.finalY + 15;
     } else {
       lastY += 25 + (strengths.length * 10);
     }

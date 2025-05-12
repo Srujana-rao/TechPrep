@@ -36,8 +36,10 @@ export const useSpeechRecognition = ({
   useEffect(() => {
     if (!hasRecognitionSupport) return;
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognitionInstance = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognitionAPI) return;
+    
+    const recognitionInstance = new SpeechRecognitionAPI();
     
     recognitionInstance.continuous = continuous;
     recognitionInstance.interimResults = interimResults;
