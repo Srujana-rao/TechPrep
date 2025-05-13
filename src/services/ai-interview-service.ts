@@ -1,309 +1,436 @@
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
+import { format } from 'date-fns';
+import { InterviewQuestion, InterviewResponse, InterviewType } from '@/types/interview';
 
-import { toast } from "@/hooks/use-toast";
+// API endpoint for AI interview service
+const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'https://api.interviewai.com';
 
-interface QuestionGenerationParams {
-  position: string;
-  experienceLevel: string;
-  skills: string[] | string;
-  interviewType: 'technical' | 'behavioral' | 'mixed';
-  jobDescription?: string;
-  additionalInfo?: string;
+// Types for interview data
+interface InterviewData {
+  id: string;
+  title: string;
+  role: string;
+  type: InterviewType;
+  questions?: InterviewQuestion[];
+  responses?: InterviewResponse[];
+  duration?: string;
+  date?: string;
+  userId?: string;
 }
 
-// This is a mock implementation. In a real application, you would call an actual AI service.
-export const generateInterviewQuestions = async (params: QuestionGenerationParams): Promise<string[]> => {
+interface InterviewResult {
+  overallScore: number;
+  strengths: string[];
+  improvements: string[];
+  detailedFeedback: Record<string, any>;
+  completedAt: string;
+}
+
+// Function to start a new interview session
+export const startInterview = async (interviewData: Partial<InterviewData>): Promise<InterviewData> => {
   try {
-    console.log("Generating questions with params:", params);
-    
-    // In a real implementation, this would be an API call to an AI service
-    // For now, we'll simulate an AI response with predefined templates and customize by skills/position
-    
-    // Define question templates by interview type
-    const technicalQuestionTemplates = [
-      "As a {position}, how would you approach implementing {skill1} in a production environment?",
-      "Based on your experience with {skill2}, what challenges have you faced and how did you overcome them?",
-      "Can you explain how you would use {skill1} and {skill3} together to solve a complex problem?",
-      "What's your approach to debugging issues related to {skill2} in a large codebase?",
-      "How would you optimize performance in a {skill1}-based application?",
-      "Describe your experience with {skill3} and how you've used it in previous projects.",
-      "What best practices do you follow when working with {skill1} for {position}-related tasks?",
-      "How do you stay updated with the latest developments in {skill2} and other relevant technologies?",
-      "Explain a particularly challenging problem you solved using {skill3} in your previous role.",
-      "How would you implement a scalable architecture for a system using {skill1} and {skill2}?"
-    ];
-    
-    const behavioralQuestionTemplates = [
-      "Tell me about a time when you had to learn {skill1} quickly for a project. How did you approach it?",
-      "Describe a situation where you had a conflict with a team member about a {skill2}-related decision. How did you resolve it?",
-      "How do you prioritize your tasks when working on multiple {position}-related projects simultaneously?",
-      "Share an example of when you had to meet a tight deadline for a project involving {skill1}. How did you manage it?",
-      "Tell me about a time when you received negative feedback on your work as a {position}. How did you handle it?",
-      "Describe your approach to collaboration when working in a cross-functional team on {skill3}-related projects.",
-      "How do you handle situations where requirements change mid-project?",
-      "Tell me about a time when you took initiative on a project involving {skill2}.",
-      "Describe a situation where you had to explain a complex {skill1} concept to a non-technical person.",
-      "How do you handle stress and pressure when working on critical {position} tasks?"
-    ];
-    
-    // Based on interview type, select the appropriate template mix
-    let selectedTemplates: string[] = [];
-    
-    switch (params.interviewType) {
-      case 'technical':
-        selectedTemplates = [...technicalQuestionTemplates];
-        break;
-      case 'behavioral':
-        selectedTemplates = [...behavioralQuestionTemplates];
-        break;
-      case 'mixed':
-        // For mixed, take a combination of both types
-        selectedTemplates = [
-          ...technicalQuestionTemplates.slice(0, 5), 
-          ...behavioralQuestionTemplates.slice(0, 5)
-        ];
-        break;
+    const response = await fetch(`${API_ENDPOINT}/interviews/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(interviewData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to start interview');
     }
-    
-    // Select distinct skills from the skills array to use in templates
-    const skillsArray = Array.isArray(params.skills) 
-      ? params.skills 
-      : typeof params.skills === 'string' ? params.skills.split(',').map(s => s.trim()) : [];
-    
-    // Make sure we have at least 3 skills to use in templates
-    const normalizedSkills = skillsArray.length >= 3 
-      ? skillsArray.slice(0, 3) 
-      : [...skillsArray, ...Array(3 - skillsArray.length).fill("relevant technology")];
-    
-    // Customize templates with actual values
-    const customizedQuestions = selectedTemplates.map(template => {
-      let question = template
-        .replace('{position}', params.position)
-        .replace('{skill1}', normalizedSkills[0])
-        .replace('{skill2}', normalizedSkills[1])
-        .replace('{skill3}', normalizedSkills[2]);
-        
-      // Add experience level context to some questions
-      if (Math.random() > 0.7) {
-        const experienceContext = getExperienceContext(params.experienceLevel);
-        question = `Given your ${experienceContext} experience, ${question.toLowerCase()}`;
-      }
-      
-      return question;
-    });
-    
-    // Shuffle the questions to ensure variety
-    const shuffledQuestions = shuffleArray(customizedQuestions);
-    
-    // Take only as many as we need (typically 5-6 for an interview)
-    return shuffledQuestions.slice(0, 6);
-    
+
+    return await response.json();
   } catch (error) {
-    console.error("Error generating interview questions:", error);
-    toast({
-      title: "Question Generation Failed",
-      description: "Could not generate custom interview questions. Using default questions instead.",
-      variant: "destructive",
+    console.error('Error starting interview:', error);
+    throw error;
+  }
+};
+
+// Function to get the next question in an interview
+export const getNextQuestion = async (interviewId: string): Promise<InterviewQuestion> => {
+  try {
+    const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/next-question`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
-    
-    // Return generic fallback questions if AI generation fails
-    return [
-      "Tell me about your background and experience.",
-      "What are your key strengths related to this role?",
-      "Describe a challenging project you worked on recently.",
-      "How do you approach problem-solving?",
-      "Where do you see yourself in five years?"
-    ];
+
+    if (!response.ok) {
+      throw new Error('Failed to get next question');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting next question:', error);
+    throw error;
   }
 };
 
-// Helper function to get context based on experience level
-const getExperienceContext = (experienceLevel: string): string => {
-  switch (experienceLevel) {
-    case 'entry':
-      return "entry-level";
-    case 'mid':
-      return "mid-level";
-    case 'senior':
-      return "senior-level";
-    case 'lead':
-      return "leadership";
-    default:
-      return "professional";
+// Function to submit a response to a question
+export const submitResponse = async (
+  interviewId: string,
+  questionId: string,
+  responseText: string
+): Promise<InterviewResponse> => {
+  try {
+    const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/responses`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        questionId,
+        responseText,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to submit response');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error submitting response:', error);
+    throw error;
   }
 };
 
-// Helper function to shuffle an array
-const shuffleArray = <T>(array: T[]): T[] => {
-  const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
+// Function to end an interview and get results
+export const endInterview = async (interviewId: string): Promise<InterviewResult> => {
+  try {
+    const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/end`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to end interview');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error ending interview:', error);
+    throw error;
   }
-  return result;
 };
 
-// In a production environment, this would be an API call to a real AI service
-// Example of how you would implement an actual OpenAI integration
-/*
-async function generateQuestionsWithAI(params: QuestionGenerationParams): Promise<string[]> {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert interviewer crafting personalized interview questions."
-        },
-        {
-          role: "user",
-          content: `Create 6 unique interview questions for a ${params.position} role, 
-          focusing on skills: ${params.skills.join(', ')}. 
-          Experience level: ${params.experienceLevel}. 
-          Interview type: ${params.interviewType}.
-          ${params.jobDescription ? `Job description: ${params.jobDescription}` : ''}
-          ${params.additionalInfo ? `Additional context: ${params.additionalInfo}` : ''}`
-        }
-      ],
-      temperature: 0.7,
-    }),
+// Function to get interview results
+export const getInterviewResults = async (interviewId: string): Promise<InterviewResult> => {
+  try {
+    const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/results`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get interview results');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error getting interview results:', error);
+    throw error;
+  }
+};
+
+// Function to generate a PDF report for an interview
+export const generatePdfReport = (interviewData: any): jsPDF => {
+  // Create a new PDF document
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
   });
 
-  const data = await response.json();
-  const content = data.choices[0].message.content;
-  
-  // Parse the questions from the AI response
-  // Assuming the AI returns a numbered list
-  const questions = content.split(/\d+\./).slice(1).map((q: string) => q.trim());
-  return questions;
-}
-*/
+  // Format date helper
+  const formatDate = (date: string | Date): string => {
+    return format(new Date(date), 'MMMM d, yyyy');
+  };
 
-export const generatePdfReport = (interviewData: any) => {
-  try {
-    import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then((autoTableModule) => {
-        const doc = new jsPDF();
-        
-        // Add title
-        doc.setFontSize(20);
-        doc.text('Interview Report', 105, 15, { align: 'center' });
-        
-        // Interview details
-        doc.setFontSize(14);
-        doc.text('Interview Details', 14, 30);
-        
-        doc.setFontSize(12);
-        doc.text(`Title: ${interviewData.title || 'N/A'}`, 14, 40);
-        doc.text(`Role: ${interviewData.role || interviewData.position || 'N/A'}`, 14, 46);
-        doc.text(`Date: ${interviewData.date || 'N/A'}`, 14, 52);
-        doc.text(`Duration: ${interviewData.duration || 'N/A'}`, 14, 58);
-        doc.text(`Type: ${interviewData.type || 'N/A'}`, 14, 64);
-        doc.text(`Overall Score: ${interviewData.score ? interviewData.score.toFixed(1) + '/10' : 'N/A'}`, 14, 70);
-        
-        // Performance feedback
-        doc.setFontSize(14);
-        doc.text('Performance Feedback', 14, 85);
-        
-        // Strengths
-        doc.setFontSize(12);
-        doc.text('Strengths:', 14, 95);
-        
-        let yPos = 101;
-        if (interviewData.results && interviewData.results.strengths && interviewData.results.strengths.length > 0) {
-          interviewData.results.strengths.forEach((strength: string, index: number) => {
-            doc.text(`• ${strength}`, 18, yPos);
-            yPos += 6;
-          });
-        } else {
-          doc.text('• No strengths recorded', 18, yPos);
-          yPos += 6;
-        }
-        
-        // Areas for improvement
-        yPos += 5;
-        doc.text('Areas for Improvement:', 14, yPos);
-        yPos += 6;
-        
-        if (interviewData.results && interviewData.results.improvements && interviewData.results.improvements.length > 0) {
-          interviewData.results.improvements.forEach((improvement: string, index: number) => {
-            doc.text(`• ${improvement}`, 18, yPos);
-            yPos += 6;
-          });
-        } else {
-          doc.text('• No areas for improvement recorded', 18, yPos);
-          yPos += 6;
-        }
-        
-        // Questions and Answers
-        yPos += 5;
-        doc.setFontSize(14);
-        doc.text('Questions and Answers', 14, yPos);
-        yPos += 10;
-        
-        if (interviewData.questions && Array.isArray(interviewData.questions) && interviewData.questions.length > 0) {
-          interviewData.questions.forEach((question: any, index: number) => {
-            if (yPos > 250) {
-              doc.addPage();
-              yPos = 20;
-            }
-            
-            doc.setFontSize(12);
-            doc.setFont(undefined, 'bold');
-            doc.text(`Question ${index + 1}: ${question.text || 'N/A'}`, 14, yPos);
-            yPos += 6;
-            
-            doc.setFont(undefined, 'normal');
-            if (question.answer && typeof question.answer === 'string') {
-              // Wrap text to avoid overflow
-              const lines = doc.splitTextToSize(
-                `Answer: ${question.answer}`, 
-                180
-              );
-              doc.text(lines, 14, yPos);
-              yPos += 6 * lines.length;
-            } else {
-              doc.text('Answer: Not provided', 14, yPos);
-              yPos += 6;
-            }
-            
-            if (question.feedback) {
-              doc.setFont(undefined, 'italic');
-              const feedbackLines = doc.splitTextToSize(
-                `Feedback: ${question.feedback}`,
-                180
-              );
-              doc.text(feedbackLines, 14, yPos);
-              yPos += 6 * feedbackLines.length + 5;
-            } else {
-              yPos += 10;
-            }
-          });
-        } else {
-          doc.text('No questions recorded for this interview.', 14, yPos);
-        }
-        
-        // Footer with timestamp
-        const date = interviewData.results?.completedAt 
-          ? new Date(interviewData.results.completedAt).toLocaleString() 
-          : new Date().toLocaleString();
-        
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Report generated: ${date}`, 14, 280);
-        
-        // Save the PDF
-        doc.save(`Interview_Report_${interviewData.title || 'Untitled'}.pdf`);
-      });
+  // Set font styles
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(44, 62, 80); // Dark blue text
+
+  // Add header
+  doc.setFontSize(24);
+  doc.text('Interview Performance Report', 20, 20);
+  
+  // Add date
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  const currentDate = formatDate(interviewData.date || new Date());
+  doc.text(`Generated on ${currentDate}`, 20, 30);
+
+  // Add horizontal line
+  doc.setDrawColor(41, 128, 185); // Blue line
+  doc.setLineWidth(0.5);
+  doc.line(20, 35, 190, 35);
+
+  // Add interview information
+  let lastY = 45; // Starting Y position
+  
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Interview Details', 20, lastY);
+  lastY += 8;
+
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  
+  // Role
+  doc.setFont('helvetica', 'bold');
+  doc.text('Position:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.role || 'Not specified', 60, lastY);
+  lastY += 8;
+  
+  // Type
+  doc.setFont('helvetica', 'bold');
+  doc.text('Interview Type:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.type || 'Not specified', 60, lastY);
+  lastY += 8;
+  
+  // Duration
+  doc.setFont('helvetica', 'bold');
+  doc.text('Duration:', 20, lastY);
+  doc.setFont('helvetica', 'normal');
+  doc.text(interviewData.duration || 'Not specified', 60, lastY);
+  lastY += 15;
+  
+  // Overall score
+  if (interviewData.results && interviewData.results.overallScore) {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Overall Score', 20, lastY);
+    lastY += 8;
+    
+    doc.setFontSize(24);
+    doc.setTextColor(41, 128, 185); // Blue text for score
+    const score = `${interviewData.results.overallScore}/10`;
+    doc.text(score, 20, lastY);
+    doc.setTextColor(44, 62, 80); // Reset text color
+    lastY += 15;
+  }
+  
+  // Strengths section
+  if (interviewData.results && interviewData.results.strengths && interviewData.results.strengths.length > 0) {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Strengths', 20, lastY);
+    lastY += 8;
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    const strengths = interviewData.results.strengths;
+    
+    // @ts-ignore - autoTable types are not fully compatible
+    const strengthsTableOutput = doc.autoTable({
+      startY: lastY,
+      head: [['Strengths']],
+      body: strengths.map((strength: string) => [strength]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [231, 247, 255],
+        textColor: [44, 62, 80],
+        fontStyle: 'bold'
+      },
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 4,
+        cellWidth: 'auto'
+      },
+      margin: { left: 20, right: 20 }
     });
     
-    return true;
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    return false;
+    // Update the Y position for the next section
+    if (strengthsTableOutput && strengthsTableOutput.lastAutoTable && strengthsTableOutput.lastAutoTable.finalY !== undefined) {
+      lastY = strengthsTableOutput.lastAutoTable.finalY + 15;
+    } else {
+      lastY += 25 + (strengths.length * 10);
+    }
+  }
+  
+  // Areas for improvement section
+  if (interviewData.results && interviewData.results.improvements && interviewData.results.improvements.length > 0) {
+    // Check if we need a new page
+    if (lastY > 250) {
+      doc.addPage();
+      lastY = 20;
+    }
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Areas for Improvement', 20, lastY);
+    lastY += 8;
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    const improvements = interviewData.results.improvements;
+    
+    // @ts-ignore - autoTable types are not fully compatible
+    const improvementsTableOutput = doc.autoTable({
+      startY: lastY,
+      head: [['Areas for Improvement']],
+      body: improvements.map((improvement: string) => [improvement]),
+      theme: 'grid',
+      headStyles: {
+        fillColor: [255, 243, 224],
+        textColor: [44, 62, 80],
+        fontStyle: 'bold'
+      },
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 4,
+        cellWidth: 'auto'
+      },
+      margin: { left: 20, right: 20 }
+    });
+    
+    // Update the Y position for the next section
+    if (improvementsTableOutput && improvementsTableOutput.lastAutoTable && improvementsTableOutput.lastAutoTable.finalY !== undefined) {
+      lastY = improvementsTableOutput.lastAutoTable.finalY + 15;
+    } else {
+      lastY += 25 + (improvements.length * 10);
+    }
+  }
+  
+  // Add detailed feedback if available
+  if (interviewData.results && interviewData.results.detailedFeedback) {
+    // Check if we need a new page
+    if (lastY > 200) {
+      doc.addPage();
+      lastY = 20;
+    }
+    
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Detailed Feedback', 20, lastY);
+    lastY += 10;
+    
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    
+    const feedback = interviewData.results.detailedFeedback;
+    
+    // Add each feedback category
+    Object.entries(feedback).forEach(([category, comments]) => {
+      if (lastY > 250) {
+        doc.addPage();
+        lastY = 20;
+      }
+      
+      doc.setFont('helvetica', 'bold');
+      doc.text(category, 20, lastY);
+      lastY += 6;
+      
+      doc.setFont('helvetica', 'normal');
+      
+      if (typeof comments === 'string') {
+        const textLines = doc.splitTextToSize(comments as string, 170);
+        doc.text(textLines, 20, lastY);
+        lastY += textLines.length * 6 + 8;
+      } else if (Array.isArray(comments)) {
+        (comments as string[]).forEach(comment => {
+          const textLines = doc.splitTextToSize(`• ${comment}`, 170);
+          doc.text(textLines, 20, lastY);
+          lastY += textLines.length * 6 + 4;
+        });
+        lastY += 4;
+      }
+    });
+  }
+  
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(128, 128, 128);
+    doc.text('Generated by InterviewAI', 20, 290);
+    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
+  }
+  
+  return doc;
+};
+
+// Mock data for development and testing
+export const getMockInterviewQuestions = (type: InterviewType): InterviewQuestion[] => {
+  if (type === 'technical') {
+    return [
+      {
+        id: '1',
+        text: 'Can you explain the difference between let, const, and var in JavaScript?',
+        type: 'technical',
+        difficulty: 'medium',
+      },
+      {
+        id: '2',
+        text: 'What is the virtual DOM in React and why is it used?',
+        type: 'technical',
+        difficulty: 'medium',
+      },
+      {
+        id: '3',
+        text: 'Explain how promises work in JavaScript.',
+        type: 'technical',
+        difficulty: 'hard',
+      },
+    ];
+  } else if (type === 'behavioral') {
+    return [
+      {
+        id: '1',
+        text: 'Tell me about a time when you had to work under a tight deadline.',
+        type: 'behavioral',
+        difficulty: 'medium',
+      },
+      {
+        id: '2',
+        text: 'Describe a situation where you had to resolve a conflict within your team.',
+        type: 'behavioral',
+        difficulty: 'medium',
+      },
+      {
+        id: '3',
+        text: 'How do you handle criticism of your work?',
+        type: 'behavioral',
+        difficulty: 'medium',
+      },
+    ];
+  } else {
+    // Mixed questions
+    return [
+      {
+        id: '1',
+        text: 'What are your strengths as a developer?',
+        type: 'behavioral',
+        difficulty: 'easy',
+      },
+      {
+        id: '2',
+        text: 'Explain the concept of closures in JavaScript.',
+        type: 'technical',
+        difficulty: 'hard',
+      },
+      {
+        id: '3',
+        text: 'Describe a challenging project you worked on and how you approached it.',
+        type: 'behavioral',
+        difficulty: 'medium',
+      },
+    ];
   }
 };
