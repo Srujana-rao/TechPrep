@@ -186,7 +186,7 @@ async function generateQuestionsWithAI(params: QuestionGenerationParams): Promis
 export const generatePdfReport = (interviewData: any) => {
   try {
     import('jspdf').then(({ default: jsPDF }) => {
-      import('jspdf-autotable').then(() => {
+      import('jspdf-autotable').then((autoTableModule) => {
         const doc = new jsPDF();
         
         // Add title

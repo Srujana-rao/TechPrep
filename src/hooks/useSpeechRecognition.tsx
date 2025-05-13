@@ -30,7 +30,7 @@ export const useSpeechRecognition = ({
   
   // Check if browser supports speech recognition
   const hasRecognitionSupport = Boolean(
-    window.SpeechRecognition || window.webkitSpeechRecognition
+    typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)
   );
 
   // Set up speech recognition
