@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Mic, Video, VideoOff, MicOff, Send, Loader, Volume2, Volume, VolumeX } from 'lucide-react';
+import { Mic, Video, VideoOff, MicOff, Send, Loader, Volume2, Volume } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -34,15 +35,12 @@ const InterviewPage = () => {
   const [userResponses, setUserResponses] = useState<string[]>([]);
   const [interviewData, setInterviewData] = useState<any>(null);
   const [customQuestions, setCustomQuestions] = useState<string[]>([]);
-  const [isRecognizing, setIsRecognizing] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const recognitionRef = useRef<any>(null);
-  const transcriptRef = useRef<string>('');
   const startTimeRef = useRef<Date | null>(null);
 
   // Initialize with interview data
@@ -71,7 +69,6 @@ const InterviewPage = () => {
       }
       if (isAudioEnabled) {
         setupAudioAnalyser();
-        setupSpeechRecognition();
       }
 
       // Start tracking interview time
@@ -91,11 +88,6 @@ const InterviewPage = () => {
       
       if (audioContextRef.current) {
         audioContextRef.current.close();
-      }
-      
-      // Stop speech recognition
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
       }
     };
   }, [isInProgress, isVideoEnabled, isAudioEnabled]);
@@ -126,95 +118,6 @@ const InterviewPage = () => {
         duration: 5000,
       });
       setIsVideoEnabled(false);
-    }
-  };
-  
-  // Set up speech recognition
-  const setupSpeechRecognition = () => {
-    // Check if the browser supports the Web Speech API
-    const SpeechRecognition = (window as any).SpeechRecognition || 
-                              (window as any).webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      toast({
-        title: "Speech recognition not supported",
-        description: "Your browser doesn't support speech recognition. Please try a different browser.",
-        variant: "destructive",
-        duration: 5000,
-      });
-      return;
-    }
-    
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    
-    recognition.lang = 'en-US';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    
-    recognition.onstart = () => {
-      setIsRecognizing(true);
-    };
-    
-    recognition.onresult = (event: any) => {
-      let transcript = '';
-      let isFinal = false;
-      
-      // Process all results including interim ones
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript + ' ';
-        if (event.results[i].isFinal) {
-          isFinal = true;
-        }
-      }
-      
-      if (transcript.trim()) {
-        // Update the transcript reference
-        transcriptRef.current = transcript.trim();
-        setUserResponse(prev => {
-          // If it's a final result, append space for the next phrase
-          // Otherwise just update with current transcript
-          return isFinal ? prev + transcript + " " : transcript;
-        });
-        setIsListening(true);
-      }
-    };
-    
-    recognition.onend = () => {
-      setIsRecognizing(false);
-      // If still in interview, restart recognition
-      if (isInProgress && !interviewComplete && isAudioEnabled) {
-        recognition.start();
-      }
-    };
-    
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error:', event.error);
-      setIsRecognizing(false);
-      
-      toast({
-        title: "Speech recognition error",
-        description: `Error: ${event.error}`,
-        variant: "destructive",
-        duration: 5000,
-      });
-      
-      // Try to restart after error
-      if (isInProgress && !interviewComplete && isAudioEnabled) {
-        setTimeout(() => {
-          try {
-            recognition.start();
-          } catch (e) {
-            console.error("Couldn't restart speech recognition", e);
-          }
-        }, 1000);
-      }
-    };
-    
-    try {
-      recognition.start();
-    } catch (error) {
-      console.error("Couldn't start speech recognition", error);
     }
   };
   
@@ -319,15 +222,10 @@ const InterviewPage = () => {
     if (!isAudioEnabled) {
       // Turning audio on
       setupAudioAnalyser();
-      setupSpeechRecognition();
     } else {
       // Turning audio off
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-      }
-      
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
       }
       
       setAudioLevel(0);
@@ -372,7 +270,6 @@ const InterviewPage = () => {
   // Reset transcript when a new question is asked
   useEffect(() => {
     if (currentQuestion) {
-      transcriptRef.current = '';
       setUserResponse('');
     }
   }, [currentQuestion]);
@@ -434,7 +331,6 @@ const InterviewPage = () => {
     
     // Clear response field
     setUserResponse('');
-    transcriptRef.current = '';
     
     // Simulate AI processing time
     setTimeout(() => {
@@ -676,8 +572,8 @@ const InterviewPage = () => {
       cancelAnimationFrame(animationFrameRef.current);
     }
     
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
     }
   };
 
@@ -690,25 +586,6 @@ const InterviewPage = () => {
       return <Mic className="text-green-500 animate-pulse" />;
     }
     return <Mic />;
-  };
-
-  // Helper function to manually toggle speech recognition
-  const toggleSpeechRecognition = () => {
-    if (recognitionRef.current) {
-      if (isRecognizing) {
-        recognitionRef.current.stop();
-        setIsRecognizing(false);
-      } else {
-        try {
-          recognitionRef.current.start();
-          setIsRecognizing(true);
-        } catch (e) {
-          console.error("Couldn't restart speech recognition", e);
-        }
-      }
-    } else {
-      setupSpeechRecognition();
-    }
   };
 
   return (
@@ -754,11 +631,6 @@ const InterviewPage = () => {
                   {isSpeaking && (
                     <div className="ml-auto px-2 py-1 bg-interview-primary text-white text-xs rounded-md animate-pulse">
                       AI Speaking...
-                    </div>
-                  )}
-                  {isRecognizing && (
-                    <div className="ml-2 px-2 py-1 bg-green-600 text-white text-xs rounded-md animate-pulse">
-                      Listening...
                     </div>
                   )}
                 </div>
@@ -822,26 +694,11 @@ const InterviewPage = () => {
                         <div className="relative">
                           <Textarea 
                             className="min-h-[100px] p-3"
-                            placeholder="Type your response here or speak (audio input will appear here)..."
+                            placeholder="Type your response here..."
                             value={userResponse}
                             onChange={(e) => setUserResponse(e.target.value)}
                             disabled={!isInProgress || isProcessing || interviewComplete}
                           />
-                          <div className="absolute right-3 top-3 flex space-x-2">
-                            {isRecognizing && (
-                              <div className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs animate-pulse">
-                                Listening...
-                              </div>
-                            )}
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={toggleSpeechRecognition}
-                              disabled={!isAudioEnabled}
-                            >
-                              {isRecognizing ? "Stop" : "Start"} Voice Input
-                            </Button>
-                          </div>
                         </div>
                         <Button 
                           className="self-end bg-interview-primary hover:bg-interview-primary/90"

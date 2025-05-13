@@ -115,8 +115,8 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (strengthsTableOutput.finalY !== undefined) {
-      lastY = strengthsTableOutput.finalY + 15;
+    if (strengthsTableOutput.lastAutoTable && strengthsTableOutput.lastAutoTable.finalY !== undefined) {
+      lastY = strengthsTableOutput.lastAutoTable.finalY + 15;
     } else {
       lastY += 25 + (strengths.length * 10);
     }
@@ -160,8 +160,8 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (improvementsTableOutput.finalY !== undefined) {
-      lastY = improvementsTableOutput.finalY + 15;
+    if (improvementsTableOutput.lastAutoTable && improvementsTableOutput.lastAutoTable.finalY !== undefined) {
+      lastY = improvementsTableOutput.lastAutoTable.finalY + 15;
     } else {
       lastY += 25 + (improvements.length * 10);
     }
