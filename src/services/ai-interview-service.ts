@@ -345,6 +345,43 @@ export const generatePdfReport = (interviewData: any): jsPDF => {
   return doc;
 };
 
+// Function to generate interview questions based on form inputs
+export const generateInterviewQuestions = async (
+  params: {
+    position: string;
+    experienceLevel: string;
+    skills: string[];
+    interviewType: 'technical' | 'behavioral' | 'mixed';
+    jobDescription?: string;
+    additionalInfo?: string;
+  }
+): Promise<InterviewQuestion[]> => {
+  try {
+    // In a production app, we would make an API call here
+    // For now, we'll use the mock data
+    console.log("Generating questions with params:", params);
+    
+    // Generate between 5-8 questions based on the params
+    const questions = getMockInterviewQuestions(params.interviewType);
+    
+    // Add some customization based on the position and skills
+    const customizedQuestions = questions.map((question, index) => ({
+      ...question,
+      id: `q-${index + 1}`,
+      text: question.text.replace(/developer/gi, params.position)
+    }));
+    
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    return customizedQuestions;
+  } catch (error) {
+    console.error("Error generating interview questions:", error);
+    // Return a default set of questions as fallback
+    return getMockInterviewQuestions(params.interviewType);
+  }
+};
+
 // Mock data for development and testing
 export const getMockInterviewQuestions = (type: InterviewType): InterviewQuestion[] => {
   if (type === 'technical') {

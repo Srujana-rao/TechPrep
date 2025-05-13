@@ -96,7 +96,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     const strengths = interviewData.results.strengths;
     
     // Use autoTable for strengths list
-    const strengthsTable = autoTable(doc, {
+    const strengthsTableOutput = autoTable(doc, {
       startY: lastY,
       head: [['Strengths']],
       body: strengths.map((strength: string) => [strength]),
@@ -115,11 +115,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (strengthsTable && strengthsTable.finalY !== undefined) {
-      lastY = strengthsTable.finalY + 15;
-    } else {
-      lastY += 25 + (strengths.length * 10);
-    }
+    lastY = (strengthsTableOutput?.finalY || lastY) + 15;
   }
   
   // Areas for improvement section
@@ -141,7 +137,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     const improvements = interviewData.results.improvements;
     
     // Use autoTable for improvements list
-    const improvementsTable = autoTable(doc, {
+    const improvementsTableOutput = autoTable(doc, {
       startY: lastY,
       head: [['Areas for Improvement']],
       body: improvements.map((improvement: string) => [improvement]),
@@ -160,11 +156,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    if (improvementsTable && improvementsTable.finalY !== undefined) {
-      lastY = improvementsTable.finalY + 15;
-    } else {
-      lastY += 25 + (improvements.length * 10);
-    }
+    lastY = (improvementsTableOutput?.finalY || lastY) + 15;
   }
   
   // Footer
