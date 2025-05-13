@@ -19,11 +19,19 @@ const Login = () => {
   }, [currentUser, navigate]);
 
   const handleLogin = async (email: string, password: string) => {
-    await login(email, password);
+    try {
+      await login(email, password);
+    } catch (error) {
+      console.error('Login error:', error);
+    }
   };
 
   const handleSignup = async (email: string, password: string, name: string) => {
-    await signup(email, password, name);
+    try {
+      await signup(email, password, name);
+    } catch (error) {
+      console.error('Signup error:', error);
+    }
   };
 
   return (
