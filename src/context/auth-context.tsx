@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -55,22 +54,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
         }
         
-        // If user signs out, clear any user-specific data from localStorage
-        if (event === 'SIGNED_OUT') {
-          try {
-            // We don't delete the data, just ensure we don't display it when logged out
-            console.log('User signed out, data preserved for next login');
-          } catch (error) {
-            console.error('Error handling sign out:', error);
-          }
-        }
-        
-        // Fetch any additional user data if needed
-        if (session?.user) {
+        // If user signs in, associate any unassigned interviews with this user
+        if (event === 'SIGNED_IN' && session?.user) {
           setTimeout(() => {
-            console.log('User authenticated:', session.user.id);
-            
-            // Upon login, ensure all interviews in local storage are properly assigned to this user
+            console.log('User signed in, associating data:', session.user.id);
             try {
               const storedInterviews = localStorage.getItem('interviewResults');
               if (storedInterviews) {
@@ -97,6 +84,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.error('Error updating interviews on login:', error);
             }
           }, 0);
+        }
+        
+        // If user signs out, preserve data in localStorage but don't display it when logged out
+        if (event === 'SIGNED_OUT') {
+          try {
+            console.log('User signed out, data preserved for next login');
+          } catch (error) {
+            console.error('Error handling sign out:', error);
+          }
         }
       }
     );
