@@ -6,29 +6,8 @@ import { InterviewQuestion, InterviewResponse, InterviewType } from '@/types/int
 // API endpoint for AI interview service
 const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'https://api.interviewai.com';
 
-// Types for interview data
-interface InterviewData {
-  id: string;
-  title: string;
-  role: string;
-  type: InterviewType;
-  questions?: InterviewQuestion[];
-  responses?: InterviewResponse[];
-  duration?: string;
-  date?: string;
-  userId?: string;
-}
-
-interface InterviewResult {
-  overallScore: number;
-  strengths: string[];
-  improvements: string[];
-  detailedFeedback: Record<string, any>;
-  completedAt: string;
-}
-
 // Function to start a new interview session
-export const startInterview = async (interviewData: Partial<InterviewData>): Promise<InterviewData> => {
+export const startInterview = async (interviewData: Partial<any>): Promise<any> => {
   try {
     const response = await fetch(`${API_ENDPOINT}/interviews/start`, {
       method: 'POST',
@@ -101,7 +80,7 @@ export const submitResponse = async (
 };
 
 // Function to end an interview and get results
-export const endInterview = async (interviewId: string): Promise<InterviewResult> => {
+export const endInterview = async (interviewId: string): Promise<any> => {
   try {
     const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/end`, {
       method: 'POST',
@@ -122,7 +101,7 @@ export const endInterview = async (interviewId: string): Promise<InterviewResult
 };
 
 // Function to get interview results
-export const getInterviewResults = async (interviewId: string): Promise<InterviewResult> => {
+export const getInterviewResults = async (interviewId: string): Promise<any> => {
   try {
     const response = await fetch(`${API_ENDPOINT}/interviews/${interviewId}/results`, {
       method: 'GET',
