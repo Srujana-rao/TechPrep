@@ -1,5 +1,5 @@
 
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
@@ -115,7 +115,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    lastY = (strengthsTableOutput && strengthsTableOutput.finalY) ? strengthsTableOutput.finalY + 15 : lastY + 15;
+    lastY = strengthsTableOutput?.finalY ? strengthsTableOutput.finalY + 15 : lastY + 15;
   }
   
   // Areas for improvement section
@@ -156,11 +156,11 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    lastY = (improvementsTableOutput && improvementsTableOutput.finalY) ? improvementsTableOutput.finalY + 15 : lastY + 15;
+    lastY = improvementsTableOutput?.finalY ? improvementsTableOutput.finalY + 15 : lastY + 15;
   }
   
   // Footer
-  const pageCount = (doc as any).internal.getNumberOfPages();
+  const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
@@ -181,3 +181,23 @@ export const generatePdf = (interviewData: any): void => {
 
 // Export generatePdf as generatePdfReport for compatibility
 export const generatePdfReport = generatePdf;
+
+// Export mock interview generation function for the New Interview page
+export const generateInterviewQuestions = async (params: {
+  position: string;
+  experienceLevel: string;
+  skills: string[];
+  interviewType: 'technical' | 'behavioral' | 'mixed';
+  jobDescription?: string;
+  additionalInfo?: string;
+}): Promise<any[]> => {
+  // This is a mock function to satisfy the interface
+  // In a real application, this would make an API call to generate questions
+  return [
+    { id: '1', question: 'Tell me about yourself', type: 'behavioral' },
+    { id: '2', question: 'What are your strengths?', type: 'behavioral' },
+    { id: '3', question: 'Describe a challenging project you worked on', type: 'behavioral' },
+    { id: '4', question: `What experience do you have with ${params.skills[0]}?`, type: 'technical' },
+    { id: '5', question: `How would you implement a ${params.skills[0]} solution?`, type: 'technical' }
+  ];
+};
