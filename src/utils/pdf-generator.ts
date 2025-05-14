@@ -3,115 +3,156 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
-// Helper function to format date
-const formatDate = (date: string | Date): string => {
-  return format(new Date(date), 'MMMM d, yyyy');
-};
+// Define the interview result type structure
+interface InterviewResult {
+  id: string;
+  title: string;
+  date: string;
+  position: string;
+  questionsAndAnswers: Array<{
+    question: string;
+    answer: string;
+    feedback?: string;
+    score?: number;
+  }>;
+  overallFeedback?: string;
+  overallScore?: number;
+  strengths?: string[];
+  areasForImprovement?: string[];
+}
 
-// Function to create interview PDF
-export const generateInterviewPDF = (interviewData: any): jsPDF => {
-  // Create a new PDF document
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
-
-  // Set font styles
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(44, 62, 80); // Dark blue text
-
-  // Add header
-  doc.setFontSize(24);
-  doc.text('Interview Feedback', 20, 20);
+// Function to generate PDF report from interview results
+export const generatePdf = (result: InterviewResult): Blob => {
+  // Create a new jsPDF instance
+  const doc = new jsPDF();
   
-  // Add date
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  const currentDate = formatDate(interviewData.date || new Date());
-  doc.text(`Generated on ${currentDate}`, 20, 30);
-
-  // Add horizontal line
-  doc.setDrawColor(41, 128, 185); // Blue line
-  doc.setLineWidth(0.5);
-  doc.line(20, 35, 190, 35);
-
-  // Add interview information
-  let lastY = 45; // Starting Y position
+  // Set initial y position for content
+  let lastY = 20;
   
-  doc.setFontSize(16);
+  // Add title
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('Interview Details', 20, lastY);
-  lastY += 8;
-
+  doc.text('Interview Results Report', 105, lastY, { align: 'center' });
+  lastY += 15;
+  
+  // Add interview details
   doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
+  doc.text(`Position: ${result.position}`, 20, lastY);
+  lastY += 10;
   
-  // Role
-  doc.setFont('helvetica', 'bold');
-  doc.text('Position:', 20, lastY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(interviewData.role || 'Not specified', 60, lastY);
-  lastY += 8;
+  const formattedDate = format(new Date(result.date), 'MMMM dd, yyyy');
+  doc.text(`Date: ${formattedDate}`, 20, lastY);
+  lastY += 20;
   
-  // Type
-  doc.setFont('helvetica', 'bold');
-  doc.text('Interview Type:', 20, lastY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(interviewData.type || 'Not specified', 60, lastY);
-  lastY += 8;
-  
-  // Duration
-  doc.setFont('helvetica', 'bold');
-  doc.text('Duration:', 20, lastY);
-  doc.setFont('helvetica', 'normal');
-  doc.text(interviewData.duration || 'Not specified', 60, lastY);
-  lastY += 15; // Add space before next section
-  
-  // Score section
-  if (interviewData.results && interviewData.results.overallScore) {
-    doc.setFontSize(16);
+  // Add overall score if available
+  if (result.overallScore !== undefined) {
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Overall Score', 20, lastY);
-    lastY += 8;
+    doc.text('Overall Performance', 20, lastY);
+    lastY += 10;
     
-    doc.setFontSize(24);
-    doc.setTextColor(41, 128, 185); // Blue text for score
-    const score = `${interviewData.results.overallScore}/100`;
-    doc.text(score, 20, lastY);
-    doc.setTextColor(44, 62, 80); // Reset text color
-    lastY += 15;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    const scoreText = `Score: ${result.overallScore}/10`;
+    doc.text(scoreText, 20, lastY);
+    lastY += 20;
   }
   
-  // Strengths section
-  if (interviewData.results && interviewData.results.strengths && interviewData.results.strengths.length > 0) {
-    doc.setFontSize(16);
+  // Add overall feedback if available
+  if (result.overallFeedback) {
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('Strengths', 20, lastY);
-    lastY += 8;
+    doc.text('Overall Feedback', 20, lastY);
+    lastY += 10;
     
     doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     
-    const strengths = interviewData.results.strengths;
+    // Split long feedback text to fit within page width
+    const splitFeedback = doc.splitTextToSize(result.overallFeedback, 170);
+    doc.text(splitFeedback, 20, lastY);
+    lastY += splitFeedback.length * 7 + 15;
+  }
+  
+  // Add questions and answers section
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Questions and Answers', 20, lastY);
+  lastY += 10;
+  
+  // Prepare data for Q&A table
+  const qaData = result.questionsAndAnswers.map((qa, index) => {
+    const data = [
+      `Q${index + 1}: ${qa.question}`,
+      qa.answer,
+    ];
+    if (qa.feedback) {
+      data.push(qa.feedback);
+    }
+    if (qa.score !== undefined) {
+      data.push(`${qa.score}/10`);
+    }
+    return data;
+  });
+  
+  // Define column headers based on available data
+  const qaHeaders = ['Question', 'Response'];
+  if (result.questionsAndAnswers.some(qa => qa.feedback)) {
+    qaHeaders.push('Feedback');
+  }
+  if (result.questionsAndAnswers.some(qa => qa.score !== undefined)) {
+    qaHeaders.push('Score');
+  }
+  
+  // Generate the Q&A table
+  autoTable(doc, {
+    startY: lastY,
+    head: [qaHeaders],
+    body: qaData,
+    headStyles: {
+      fillColor: [41, 128, 185],
+      textColor: 255,
+      fontStyle: 'bold',
+    },
+    alternateRowStyles: {
+      fillColor: [240, 240, 240],
+    },
+    styles: {
+      overflow: 'linebreak',
+      cellWidth: 'wrap',
+    },
+    columnStyles: {
+      0: { cellWidth: 60 },
+      1: { cellWidth: 50 },
+    },
+  });
+  
+  // Get the final Y position of the table
+  const qaTableOutput = doc.lastAutoTable;
+  lastY = qaTableOutput?.finalY ? qaTableOutput.finalY + 15 : lastY + 15;
+  
+  // Add strengths section if available
+  if (result.strengths && result.strengths.length > 0) {
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Key Strengths', 20, lastY);
+    lastY += 10;
     
-    // Use autoTable for strengths list
-    const strengthsTableOutput = autoTable(doc, {
+    // Create table for strengths
+    const strengthsData = result.strengths.map(strength => [strength]);
+    autoTable(doc, {
       startY: lastY,
-      head: [['Strengths']],
-      body: strengths.map((strength: string) => [strength]),
+      body: strengthsData,
       theme: 'grid',
-      headStyles: {
-        fillColor: [231, 247, 255],
-        textColor: [44, 62, 80],
-        fontStyle: 'bold'
-      },
       styles: {
         overflow: 'linebreak',
-        cellPadding: 4,
-        cellWidth: 'auto'
+        cellWidth: 'wrap',
       },
-      margin: { left: 20, right: 20 }
+      headStyles: {
+        fillColor: [39, 174, 96],
+        textColor: 255,
+      },
     });
     
     // Update the Y position for the next section
@@ -119,40 +160,26 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
   }
   
   // Areas for improvement section
-  if (interviewData.results && interviewData.results.improvements && interviewData.results.improvements.length > 0) {
-    // Check if we need a new page
-    if (lastY > 250) {
-      doc.addPage();
-      lastY = 20;
-    }
-    
-    doc.setFontSize(16);
+  if (result.areasForImprovement && result.areasForImprovement.length > 0) {
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text('Areas for Improvement', 20, lastY);
-    lastY += 8;
+    lastY += 10;
     
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'normal');
-    
-    const improvements = interviewData.results.improvements;
-    
-    // Use autoTable for improvements list
-    const improvementsTableOutput = autoTable(doc, {
+    // Create table for areas of improvement
+    const improvementsData = result.areasForImprovement.map(area => [area]);
+    autoTable(doc, {
       startY: lastY,
-      head: [['Areas for Improvement']],
-      body: improvements.map((improvement: string) => [improvement]),
+      body: improvementsData,
       theme: 'grid',
-      headStyles: {
-        fillColor: [255, 243, 224],
-        textColor: [44, 62, 80],
-        fontStyle: 'bold'
-      },
       styles: {
         overflow: 'linebreak',
-        cellPadding: 4,
-        cellWidth: 'auto'
+        cellWidth: 'wrap',
       },
-      margin: { left: 20, right: 20 }
+      headStyles: {
+        fillColor: [231, 76, 60],
+        textColor: 255,
+      },
     });
     
     // Update the Y position for the next section
@@ -164,40 +191,14 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
-    doc.setFont('helvetica', 'italic');
-    doc.setTextColor(128, 128, 128);
-    doc.text('Generated by InterviewAI', 20, 290);
-    doc.text(`Page ${i} of ${pageCount}`, 180, 290);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Page ${i} of ${pageCount}`, 105, doc.internal.pageSize.height - 10, { align: 'center' });
+    doc.text(`Generated on ${format(new Date(), 'MMMM dd, yyyy')}`, 105, doc.internal.pageSize.height - 5, { align: 'center' });
   }
   
-  return doc;
-};
-
-// Export a function to generate and save the PDF
-export const generatePdf = (interviewData: any): void => {
-  const doc = generateInterviewPDF(interviewData);
-  doc.save(`interview-feedback-${new Date().getTime()}.pdf`);
+  // Generate and return the PDF as a Blob
+  return doc.output('blob');
 };
 
 // Export generatePdf as generatePdfReport for compatibility
 export const generatePdfReport = generatePdf;
-
-// Export mock interview generation function for the New Interview page
-export const generateInterviewQuestions = async (params: {
-  position: string;
-  experienceLevel: string;
-  skills: string[];
-  interviewType: 'technical' | 'behavioral' | 'mixed';
-  jobDescription?: string;
-  additionalInfo?: string;
-}): Promise<any[]> => {
-  // This is a mock function to satisfy the interface
-  // In a real application, this would make an API call to generate questions
-  return [
-    { id: '1', question: 'Tell me about yourself', type: 'behavioral' },
-    { id: '2', question: 'What are your strengths?', type: 'behavioral' },
-    { id: '3', question: 'Describe a challenging project you worked on', type: 'behavioral' },
-    { id: '4', question: `What experience do you have with ${params.skills[0]}?`, type: 'technical' },
-    { id: '5', question: `How would you implement a ${params.skills[0]} solution?`, type: 'technical' }
-  ];
-};
