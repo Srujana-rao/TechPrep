@@ -22,7 +22,7 @@ interface InterviewResult {
 }
 
 // Function to generate PDF report from interview results
-export const generatePdf = (result: InterviewResult): Blob => {
+export const generatePdf = (result: InterviewResult): void => {
   // Create a new jsPDF instance
   const doc = new jsPDF();
   
@@ -198,8 +198,9 @@ export const generatePdf = (result: InterviewResult): Blob => {
     doc.text(`Generated on ${format(new Date(), 'MMMM dd, yyyy')}`, 105, doc.internal.pageSize.height - 5, { align: 'center' });
   }
   
-  // Generate and return the PDF as a Blob
-  return doc.output('blob');
+  // Save the PDF file with a meaningful filename
+  const fileName = `Interview_Report_${result.position}_${format(new Date(result.date), 'yyyy-MM-dd')}.pdf`;
+  doc.save(fileName);
 };
 
 // Export generatePdf as generatePdfReport for compatibility
