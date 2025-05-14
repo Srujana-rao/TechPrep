@@ -12,14 +12,14 @@ export const generateInterviewQuestions = async (params: {
   interviewType: 'technical' | 'behavioral' | 'mixed';
   jobDescription?: string;
   additionalInfo?: string;
-}): Promise<any[]> => {
+}): Promise<Array<{ id: string; text: string; type: string; }>> => {
   // This is a mock function that returns sample interview questions
   // In a real application, this would make an API call to generate questions
   return [
-    { id: '1', question: 'Tell me about yourself', type: 'behavioral' },
-    { id: '2', question: 'What are your strengths?', type: 'behavioral' },
-    { id: '3', question: 'Describe a challenging project you worked on', type: 'behavioral' },
-    { id: '4', question: `What experience do you have with ${params.skills[0]}?`, type: 'technical' },
-    { id: '5', question: `How would you implement a ${params.skills[0]} solution?`, type: 'technical' }
+    { id: '1', text: 'Tell me about yourself', type: 'behavioral' },
+    { id: '2', text: 'What are your strengths?', type: 'behavioral' },
+    { id: '3', text: 'Describe a challenging project you worked on', type: 'behavioral' },
+    { id: '4', text: `What experience do you have with ${params.skills[0]}?`, type: 'technical' },
+    { id: '5', text: `How would you implement a ${params.skills[0]} solution?`, type: 'technical' }
   ];
 };

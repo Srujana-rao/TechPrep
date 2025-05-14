@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
@@ -54,7 +53,20 @@ const InterviewPage = () => {
         if (currentInterview) {
           setInterviewData(currentInterview);
           if (currentInterview.questions && currentInterview.questions.length > 0) {
-            setCustomQuestions(currentInterview.questions);
+            // Ensure each question is a string
+            const processedQuestions = currentInterview.questions.map((q: any) => {
+              // If q is an object with a text property, use that
+              if (typeof q === 'object' && q !== null && 'text' in q) {
+                return q.text;
+              }
+              // If q is already a string, use it directly
+              if (typeof q === 'string') {
+                return q;
+              }
+              // Fallback for any other case
+              return 'Tell me about yourself';
+            });
+            setCustomQuestions(processedQuestions);
           }
         }
       }

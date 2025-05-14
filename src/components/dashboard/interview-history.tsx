@@ -23,7 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
-import { generatePdf } from '@/utils/pdf-generator';
+import { generatePdfReport } from '@/utils/pdf-generator';
 
 interface Interview {
   id: string;
@@ -62,10 +62,27 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
 
   const handleDownloadPdf = (interview: Interview) => {
     try {
-      generatePdf({
-        ...interview,
-        score: interview.score || interview.results?.overallScore || 0,
+      // Convert Interview to the expected InterviewResult format
+      const questionsAndAnswers = interview.results?.conversation?.map((item: any) => {
+        return {
+          question: item.question || "",
+          answer: item.answer || "",
+          feedback: item.feedback || ""
+        };
+      }) || [];
+
+      // Call generatePdfReport with properly formatted data
+      generatePdfReport({
+        id: interview.id,
+        title: interview.title,
+        date: interview.date,
+        position: interview.position || interview.role,
+        questionsAndAnswers: questionsAndAnswers,
+        overallScore: interview.score || interview.results?.overallScore || 0,
+        strengths: interview.results?.strengths || [],
+        areasForImprovement: interview.results?.improvements || [],
       });
+      
       toast({
         title: "Report generated",
         description: "Your interview report has been downloaded.",

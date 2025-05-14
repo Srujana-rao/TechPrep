@@ -1,24 +1,24 @@
 
 /// <reference types="vite/client" />
 
-declare module 'jspdf-autotable' {
-  import jsPDF from 'jspdf';
-
-  interface AutoTableOutput {
-    finalY?: number;
-    [key: string]: any;
-  }
-
-  function autoTable(doc: jsPDF, options: any): AutoTableOutput;
-  
-  export default autoTable;
-}
-
+// Define augmentations for jsPDF and jsPDF-autotable
 declare module 'jspdf' {
   interface jsPDF {
+    autoTable?: (options: any) => void;
+    lastAutoTable?: {
+      finalY: number;
+    };
     internal: {
-      getNumberOfPages: () => number;
-      [key: string]: any;
+      pageSize: {
+        getWidth: () => number;
+        getHeight: () => number;
+        width: number;
+        height: number;
+      };
     };
   }
+}
+
+declare module 'jspdf-autotable' {
+  export default function autoTable(doc: any, options: any): void;
 }

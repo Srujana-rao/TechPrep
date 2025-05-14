@@ -1,6 +1,6 @@
 
 import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import { format } from 'date-fns';
 
 // Define the interview result type structure
@@ -106,7 +106,7 @@ export const generatePdf = (result: InterviewResult): Blob => {
   }
   
   // Generate the Q&A table
-  autoTable(doc, {
+  (doc as any).autoTable({
     startY: lastY,
     head: [qaHeaders],
     body: qaData,
@@ -129,8 +129,8 @@ export const generatePdf = (result: InterviewResult): Blob => {
   });
   
   // Get the final Y position of the table
-  const qaTableOutput = doc.lastAutoTable;
-  lastY = qaTableOutput?.finalY ? qaTableOutput.finalY + 15 : lastY + 15;
+  const qaTableFinalY = (doc as any).lastAutoTable?.finalY || lastY + 15;
+  lastY = qaTableFinalY + 15;
   
   // Add strengths section if available
   if (result.strengths && result.strengths.length > 0) {
@@ -141,7 +141,7 @@ export const generatePdf = (result: InterviewResult): Blob => {
     
     // Create table for strengths
     const strengthsData = result.strengths.map(strength => [strength]);
-    autoTable(doc, {
+    (doc as any).autoTable({
       startY: lastY,
       body: strengthsData,
       theme: 'grid',
@@ -156,7 +156,8 @@ export const generatePdf = (result: InterviewResult): Blob => {
     });
     
     // Update the Y position for the next section
-    lastY = strengthsTableOutput?.finalY ? strengthsTableOutput.finalY + 15 : lastY + 15;
+    const strengthsTableFinalY = (doc as any).lastAutoTable?.finalY || lastY + 15;
+    lastY = strengthsTableFinalY + 15;
   }
   
   // Areas for improvement section
@@ -168,7 +169,7 @@ export const generatePdf = (result: InterviewResult): Blob => {
     
     // Create table for areas of improvement
     const improvementsData = result.areasForImprovement.map(area => [area]);
-    autoTable(doc, {
+    (doc as any).autoTable({
       startY: lastY,
       body: improvementsData,
       theme: 'grid',
@@ -183,7 +184,8 @@ export const generatePdf = (result: InterviewResult): Blob => {
     });
     
     // Update the Y position for the next section
-    lastY = improvementsTableOutput?.finalY ? improvementsTableOutput.finalY + 15 : lastY + 15;
+    const improvementsTableFinalY = (doc as any).lastAutoTable?.finalY || lastY + 15;
+    lastY = improvementsTableFinalY + 15;
   }
   
   // Footer
