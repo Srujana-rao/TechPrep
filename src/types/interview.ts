@@ -23,7 +23,14 @@ export interface InterviewResult {
   responseQuality?: Record<number, 'good' | 'fair' | 'needs_improvement'>;
   questionsAsked?: number;
   userResponses?: string[];
-  conversation?: any[];
+  conversation?: Array<{
+    question?: string;
+    answer?: string;
+    feedback?: string;
+    speaker?: string;
+    text?: string;
+    quality?: string;
+  }>;
 }
 
 export interface InterviewData {

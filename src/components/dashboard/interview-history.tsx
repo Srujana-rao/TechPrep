@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { generatePdfReport } from '@/utils/pdf-generator';
+import { InterviewResult } from '@/types/interview';
 
 interface Interview {
   id: string;
@@ -36,12 +37,7 @@ interface Interview {
   completed: boolean;
   score?: number;
   user_id?: string;
-  results?: {
-    overallScore: number;
-    strengths: string[];
-    improvements: string[];
-    completedAt: string;
-  };
+  results?: InterviewResult;
 }
 
 interface InterviewHistoryProps {
@@ -65,7 +61,7 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
       // Convert Interview to the expected InterviewResult format
       const questionsAndAnswers = interview.results?.conversation?.map((item: any) => {
         return {
-          question: item.question || "",
+          question: item.question || item.text || "",
           answer: item.answer || "",
           feedback: item.feedback || ""
         };
