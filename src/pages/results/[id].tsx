@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
@@ -461,7 +460,8 @@ const ResultsPage = () => {
       }
       
       // Add footer with date
-      const totalPages = doc.getNumberOfPages();
+      // Fix: Use internal.getNumberOfPages() instead of getNumberOfPages()
+      const totalPages = (doc as any).internal.getNumberOfPages();
       for(let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
         doc.setFontSize(10);

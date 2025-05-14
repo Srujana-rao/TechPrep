@@ -1,5 +1,4 @@
 
-
 /// <reference types="vite/client" />
 
 declare module 'jspdf-autotable' {
@@ -15,3 +14,11 @@ declare module 'jspdf-autotable' {
   export default autoTable;
 }
 
+declare module 'jspdf' {
+  interface jsPDF {
+    internal: {
+      getNumberOfPages: () => number;
+      [key: string]: any;
+    };
+  }
+}

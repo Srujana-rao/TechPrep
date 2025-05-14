@@ -115,7 +115,7 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    lastY = (strengthsTableOutput?.finalY || lastY) + 15;
+    lastY = (strengthsTableOutput && strengthsTableOutput.finalY) ? strengthsTableOutput.finalY + 15 : lastY + 15;
   }
   
   // Areas for improvement section
@@ -156,11 +156,12 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
     });
     
     // Update the Y position for the next section
-    lastY = (improvementsTableOutput?.finalY || lastY) + 15;
+    lastY = (improvementsTableOutput && improvementsTableOutput.finalY) ? improvementsTableOutput.finalY + 15 : lastY + 15;
   }
   
   // Footer
-  const pageCount = doc.getNumberOfPages();
+  // Use internal._getPages().length instead of getNumberOfPages()
+  const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
     doc.setFontSize(10);
@@ -178,4 +179,3 @@ export const generatePdf = (interviewData: any): void => {
   const doc = generateInterviewPDF(interviewData);
   doc.save(`interview-feedback-${new Date().getTime()}.pdf`);
 };
-
