@@ -1,7 +1,12 @@
-import { jsPDF } from 'jspdf';
+
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { InterviewQuestion, InterviewResponse, InterviewType } from '@/types/interview';
+import { generatePdf } from '@/utils/pdf-generator';
+
+// Export the generatePdf function as generatePdfReport for backward compatibility
+export const generatePdfReport = generatePdf;
 
 // API endpoint for AI interview service
 const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'https://api.interviewai.com';

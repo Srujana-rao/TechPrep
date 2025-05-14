@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar } from '@/components/layout/navbar';
@@ -9,7 +10,7 @@ import { BarChart2, MessagesSquare, ScrollText, Download, FileText } from 'lucid
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { generatePdfReport } from '@/services/ai-interview-service';
 

@@ -1,8 +1,9 @@
 
+
 /// <reference types="vite/client" />
 
 declare module 'jspdf-autotable' {
-  import { jsPDF } from 'jspdf';
+  import jsPDF from 'jspdf';
 
   interface AutoTableOutput {
     finalY?: number;
@@ -13,3 +14,4 @@ declare module 'jspdf-autotable' {
   
   export default autoTable;
 }
+

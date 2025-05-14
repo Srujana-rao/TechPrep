@@ -1,5 +1,5 @@
 
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
@@ -178,3 +178,4 @@ export const generatePdf = (interviewData: any): void => {
   const doc = generateInterviewPDF(interviewData);
   doc.save(`interview-feedback-${new Date().getTime()}.pdf`);
 };
+
