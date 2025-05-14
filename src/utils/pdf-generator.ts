@@ -160,7 +160,6 @@ export const generateInterviewPDF = (interviewData: any): jsPDF => {
   }
   
   // Footer
-  // Use internal._getPages().length instead of getNumberOfPages()
   const pageCount = (doc as any).internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -179,3 +178,6 @@ export const generatePdf = (interviewData: any): void => {
   const doc = generateInterviewPDF(interviewData);
   doc.save(`interview-feedback-${new Date().getTime()}.pdf`);
 };
+
+// Export generatePdf as generatePdfReport for compatibility
+export const generatePdfReport = generatePdf;
