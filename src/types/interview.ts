@@ -31,6 +31,7 @@ export interface InterviewResult {
     text?: string;
     quality?: string;
   }>;
+  overallFeedback?: string;
 }
 
 export interface InterviewData {
@@ -45,4 +46,17 @@ export interface InterviewData {
   duration?: string;
   score?: number;
   results?: InterviewResult;
+  user_id?: string;
+  lastActive?: string; // To track when an interview was last accessed
+  progress?: number; // To track progress percentage through the interview
+}
+
+export interface UpcomingInterview {
+  id: string;
+  title: string;
+  date: Date | string;
+  time?: string;
+  type: InterviewType;
+  role: string;
+  topics?: string[];
 }

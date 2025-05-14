@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/layout/navbar';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { InterviewHistory } from '@/components/dashboard/interview-history';
+import { UpcomingInterviews } from '@/components/dashboard/upcoming-interviews';
 import { Card, CardContent } from '@/components/ui/card';
 import { CalendarClock, CheckCircle, Clock } from 'lucide-react';
 import { useAuth } from '@/context/auth-context';
@@ -22,6 +24,17 @@ interface Interview {
     strengths: string[];
     improvements: string[];
     completedAt: string;
+    conversation?: Array<{
+      question?: string;
+      answer?: string;
+      feedback?: string;
+      speaker?: string;
+      text?: string;
+      quality?: string;
+    }>;
+    responseQuality?: Record<number, 'good' | 'fair' | 'needs_improvement'>;
+    questionsAsked?: number;
+    userResponses?: string[];
   };
   user_id?: string;
 }
@@ -134,7 +147,7 @@ const Dashboard = () => {
   // Calculate metrics based on user-specific interviews
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;
-  const upcomingInterviews = 0; // This would come from scheduled interviews in a real app
+  const upcomingInterviews = 3; // Example value, would be actual scheduled interviews in a real app
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -205,16 +218,25 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
-          {isLoading ? (
-            <div className="text-center py-8">Loading your interviews...</div>
-          ) : (
-            <InterviewHistory 
-              interviews={interviews} 
-              onDeleteInterview={handleDeleteInterview}
-            />
-          )}
+        {/* Two-column layout for Upcoming Interviews and Interview History */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Upcoming Interviews Section */}
+          <div className="lg:col-span-1">
+            <UpcomingInterviews />
+          </div>
+          
+          {/* Interview History Section */}
+          <div className="lg:col-span-2">
+            <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
+            {isLoading ? (
+              <div className="text-center py-8">Loading your interviews...</div>
+            ) : (
+              <InterviewHistory 
+                interviews={interviews} 
+                onDeleteInterview={handleDeleteInterview}
+              />
+            )}
+          </div>
         </div>
       </main>
     </div>
