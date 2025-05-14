@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -10,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, BarChart, Trash2, Download } from 'lucide-react';
+import { Calendar, Clock, BarChart, Trash2, Download, Share } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +23,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { toast } from "@/hooks/use-toast";
 import { generatePdfReport } from '@/utils/pdf-generator';
 import { InterviewResult } from '@/types/interview';
@@ -58,26 +65,52 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
 
   const handleDownloadPdf = (interview: Interview) => {
     try {
-      // Convert Interview to the expected InterviewResult format
-      const questionsAndAnswers = interview.results?.conversation?.map((item: any) => {
-        return {
-          question: item.question || item.text || "",
-          answer: item.answer || "",
-          feedback: item.feedback || ""
-        };
-      }) || [];
+      // Ensure we have conversation data
+      if (!interview.results?.conversation || interview.results.conversation.length === 0) {
+        // Create minimal conversation if it doesn't exist
+        const questionsAndAnswers = [
+          {
+            question: "No detailed conversation data available",
+            answer: "Summary report only",
+            feedback: ""
+          }
+        ];
+        
+        // Call generatePdfReport with properly formatted data
+        generatePdfReport({
+          id: interview.id,
+          title: interview.title,
+          date: interview.date,
+          position: interview.position || interview.role,
+          questionsAndAnswers: questionsAndAnswers,
+          overallScore: interview.score || interview.results?.overallScore || 0,
+          overallFeedback: "This is an automatically generated report based on your interview performance.",
+          strengths: interview.results?.strengths || [],
+          areasForImprovement: interview.results?.improvements || [],
+        });
+      } else {
+        // Convert Interview conversation data to the expected format
+        const questionsAndAnswers = interview.results.conversation.map((item) => {
+          return {
+            question: item.question || item.text || "",
+            answer: item.answer || "",
+            feedback: item.feedback || ""
+          };
+        });
 
-      // Call generatePdfReport with properly formatted data
-      generatePdfReport({
-        id: interview.id,
-        title: interview.title,
-        date: interview.date,
-        position: interview.position || interview.role,
-        questionsAndAnswers: questionsAndAnswers,
-        overallScore: interview.score || interview.results?.overallScore || 0,
-        strengths: interview.results?.strengths || [],
-        areasForImprovement: interview.results?.improvements || [],
-      });
+        // Call generatePdfReport with properly formatted data
+        generatePdfReport({
+          id: interview.id,
+          title: interview.title,
+          date: interview.date,
+          position: interview.position || interview.role,
+          questionsAndAnswers: questionsAndAnswers,
+          overallScore: interview.score || interview.results?.overallScore || 0,
+          overallFeedback: interview.results?.overallFeedback || "This report summarizes your interview performance.",
+          strengths: interview.results?.strengths || [],
+          areasForImprovement: interview.results?.improvements || [],
+        });
+      }
       
       toast({
         title: "Report generated",
@@ -88,6 +121,60 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
       toast({
         title: "Error generating report",
         description: "There was a problem generating your PDF report.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleShare = (interview: Interview, platform: string) => {
+    try {
+      // Create share URL with interview details
+      const baseUrl = window.location.origin;
+      const shareUrl = `${baseUrl}/results/${interview.id}`;
+      const shareTitle = `My Interview Results: ${interview.title}`;
+      const shareText = `Check out my interview results for ${interview.position || interview.role} position. Score: ${interview.score || interview.results?.overallScore || 'N/A'}/10`;
+      
+      // Handle different share platforms
+      let shareLink = '';
+      
+      switch(platform) {
+        case 'whatsapp':
+          shareLink = `https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`;
+          break;
+        case 'facebook':
+          shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(shareText)}`;
+          break;
+        case 'linkedin':
+          shareLink = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(shareTitle)}&summary=${encodeURIComponent(shareText)}`;
+          break;
+        case 'twitter':
+          shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+          break;
+        case 'email':
+          shareLink = `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(`${shareText}\n\n${shareUrl}`)}`;
+          break;
+        default:
+          // Copy to clipboard
+          navigator.clipboard.writeText(`${shareText}\n${shareUrl}`);
+          toast({
+            title: "Link copied",
+            description: "Interview result link copied to clipboard.",
+          });
+          return;
+      }
+      
+      // Open the share link in a new window
+      window.open(shareLink, '_blank', 'noopener,noreferrer');
+      
+      toast({
+        title: "Sharing initiated",
+        description: `Sharing interview results via ${platform}.`,
+      });
+    } catch (error) {
+      console.error('Error sharing interview:', error);
+      toast({
+        title: "Sharing failed",
+        description: "There was a problem sharing your results.",
         variant: "destructive",
       });
     }
@@ -197,14 +284,45 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
                     View Results
                   </Link>
                 </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleDownloadPdf(interview)}
-                  className="border-interview-primary text-interview-primary hover:bg-interview-primary/10"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download PDF
-                </Button>
+                <div className="flex space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleDownloadPdf(interview)}
+                    className="border-interview-primary text-interview-primary hover:bg-interview-primary/10"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download
+                  </Button>
+                  
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="border-interview-primary text-interview-primary hover:bg-interview-primary/10">
+                        <Share className="mr-2 h-4 w-4" />
+                        Share
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'whatsapp')}>
+                        WhatsApp
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'facebook')}>
+                        Facebook
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'linkedin')}>
+                        LinkedIn
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'twitter')}>
+                        Twitter
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'email')}>
+                        Email
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleShare(interview, 'copy')}>
+                        Copy Link
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
             ) : (
               <Button asChild>

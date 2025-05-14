@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
@@ -257,11 +258,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      // First check if we have a valid session to avoid "Session not found" errors
-      const { data } = await supabase.auth.getSession();
+      // First make sure we have the current session
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      // Only attempt to sign out if we have an active session
-      if (data.session) {
+      if (sessionData?.session) {
+        // If we have a session, sign out
         const { error } = await supabase.auth.signOut();
         
         if (error) {
@@ -274,11 +275,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           description: 'You have been successfully logged out.',
         });
       } else {
-        // If no session exists, just clear the state
         console.log('No active session found, clearing state only');
       }
       
-      // Clear user state
+      // Clear user state regardless of API response
       setCurrentUser(null);
       setSession(null);
       
