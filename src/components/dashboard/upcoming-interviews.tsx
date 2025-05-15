@@ -1,11 +1,25 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, Bell } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface UpcomingInterview {
   id: string;
@@ -22,6 +36,10 @@ interface UpcomingInterviewsProps {
 }
 
 export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps) => {
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [selectedInterview, setSelectedInterview] = useState<UpcomingInterview | null>(null);
+  const [reminderTime, setReminderTime] = useState<string>("15");
+
   // Function to calculate days remaining and return appropriate styling
   const getDaysRemainingInfo = (interviewDate: Date | string) => {
     const date = typeof interviewDate === 'string' ? new Date(interviewDate) : interviewDate;
@@ -54,6 +72,27 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
     }
     
     return { badgeVariant, textColor, message, daysRemaining };
+  };
+
+  const handleSetReminder = (interview: UpcomingInterview) => {
+    setSelectedInterview(interview);
+    setReminderOpen(true);
+  };
+
+  const saveReminder = () => {
+    if (!selectedInterview) return;
+
+    // In a real app, this would save to a database or calendar
+    const reminderMessage = `Reminder set for ${selectedInterview.title} ${reminderTime} minutes before the interview.`;
+    
+    // Close the dialog
+    setReminderOpen(false);
+    
+    // Show confirmation
+    toast({
+      title: "Reminder Set",
+      description: reminderMessage,
+    });
   };
   
   // Generate sample upcoming interviews if none provided
@@ -153,22 +192,80 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
                 )}
               </CardContent>
               
-              <CardFooter className="pt-0 flex justify-between">
-                <Button variant="outline" size="sm" className="text-interview-primary border-interview-primary hover:bg-interview-primary/10">
+              <CardFooter className="pt-0">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="text-interview-primary border-interview-primary hover:bg-interview-primary/10 w-full"
+                  onClick={() => handleSetReminder(interview)}
+                >
                   <Bell className="mr-1 h-4 w-4" />
                   Set Reminder
-                </Button>
-                
-                <Button asChild size="sm" className="bg-interview-primary hover:bg-interview-primary/90">
-                  <Link to={`/interview/prepare/${interview.id}`}>
-                    Prepare
-                  </Link>
                 </Button>
               </CardFooter>
             </Card>
           );
         })}
       </div>
+
+      {/* Reminder Dialog */}
+      <Dialog open={reminderOpen} onOpenChange={setReminderOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set Interview Reminder</DialogTitle>
+            <DialogDescription>
+              Choose when you want to be reminded about this interview.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <h4 className="mb-2 font-medium">{selectedInterview?.title}</h4>
+            <div className="flex items-center space-x-2 text-sm text-gray-500 mb-3">
+              <Calendar className="h-4 w-4" />
+              <span>
+                {selectedInterview?.date instanceof Date 
+                  ? format(selectedInterview.date, 'MMM dd, yyyy') 
+                  : selectedInterview?.date 
+                    ? format(new Date(selectedInterview.date), 'MMM dd, yyyy')
+                    : ''}
+              </span>
+              {selectedInterview?.time && (
+                <>
+                  <Clock className="h-4 w-4 ml-2" />
+                  <span>{selectedInterview.time}</span>
+                </>
+              )}
+            </div>
+            
+            <div className="mt-4">
+              <label htmlFor="reminder-time" className="block text-sm font-medium mb-1">
+                Remind me before the interview:
+              </label>
+              <select 
+                id="reminder-time"
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className="w-full rounded-md border border-gray-300 p-2"
+              >
+                <option value="15">15 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+                <option value="120">2 hours</option>
+                <option value="1440">1 day</option>
+              </select>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReminderOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveReminder} className="bg-interview-primary hover:bg-interview-primary/90">
+              Save Reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

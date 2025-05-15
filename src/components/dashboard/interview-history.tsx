@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, BarChart, Trash2 } from 'lucide-react';
+import { Calendar, Clock, BarChart, Trash2, Share, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
 import { generatePdfReport } from '@/utils/pdf-generator';
 import { InterviewResult } from '@/types/interview';
@@ -53,6 +58,90 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
       toast({
         title: "Interview deleted",
         description: "The interview has been successfully deleted.",
+      });
+    }
+  };
+
+  const handleShare = (interview: Interview) => {
+    // Create shareable link
+    const shareUrl = `${window.location.origin}/results/${interview.id}`;
+    
+    // Check if the Web Share API is supported
+    if (navigator.share) {
+      navigator.share({
+        title: `Interview Results: ${interview.title}`,
+        text: `Check out my interview results for ${interview.title}`,
+        url: shareUrl,
+      }).catch(error => {
+        console.log('Error sharing:', error);
+        // Fallback if sharing fails
+        copyToClipboard(shareUrl);
+      });
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      copyToClipboard(shareUrl);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Link copied to clipboard",
+        description: "You can now paste and share the interview results link.",
+      });
+    }).catch(err => {
+      console.error('Failed to copy: ', err);
+      toast({
+        title: "Failed to copy link",
+        description: "Please try again or copy the URL manually.",
+        variant: "destructive"
+      });
+    });
+  };
+
+  const handleDownloadPdf = (interview: Interview) => {
+    if (!interview || !interview.results) {
+      toast({
+        title: "Cannot generate report",
+        description: "Interview results are not available.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const reportData = {
+        id: interview.id,
+        title: interview.title,
+        date: interview.date,
+        position: interview.position || interview.role,
+        questionsAndAnswers: interview.results.conversation
+          ? interview.results.conversation
+              .filter(item => item.question || item.answer)
+              .map(item => ({
+                question: item.question || '',
+                answer: item.answer || '',
+                feedback: item.feedback || '',
+                score: item.quality === 'good' ? 8 : item.quality === 'fair' ? 6 : 4
+              }))
+          : [],
+        overallScore: interview.score || interview.results.overallScore,
+        strengths: interview.results.strengths || [],
+        areasForImprovement: interview.results.improvements || []
+      };
+
+      generatePdfReport(reportData);
+      
+      toast({
+        title: "PDF Generated",
+        description: "Your interview report has been generated and downloaded.",
+      });
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        title: "Error generating PDF",
+        description: "There was a problem creating your report. Please try again.",
+        variant: "destructive"
       });
     }
   };
@@ -147,19 +236,39 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
               </div>
             )}
           </CardContent>
-          <CardFooter className="pt-0">
+          <CardFooter className="pt-0 flex flex-wrap gap-2">
             {interview.completed ? (
-              <Button asChild variant="outline" className="w-full">
-                <Link to={`/results/${interview.id}`} state={{ 
-                  interviewData: interview,
-                  overallScore: interview.score || 0,
-                  results: interview.results,
-                  completedAt: interview.results?.completedAt || new Date().toISOString(),
-                }}>
-                  <BarChart className="mr-2 h-4 w-4" />
-                  View Results
-                </Link>
-              </Button>
+              <>
+                <Button asChild variant="outline" className="flex-1 min-w-0">
+                  <Link to={`/results/${interview.id}`} state={{ 
+                    interviewData: interview,
+                    overallScore: interview.score || 0,
+                    results: interview.results,
+                    completedAt: interview.results?.completedAt || new Date().toISOString(),
+                  }}>
+                    <BarChart className="mr-2 h-4 w-4" />
+                    View Results
+                  </Link>
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9" 
+                  onClick={() => handleShare(interview)}
+                  title="Share Results"
+                >
+                  <Share className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-9 w-9" 
+                  onClick={() => handleDownloadPdf(interview)}
+                  title="Download PDF Report"
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </>
             ) : (
               <Button asChild className="w-full">
                 <Link to={`/interview/${interview.id}`}>
