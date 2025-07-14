@@ -30,7 +30,7 @@ export const FeaturesSection = () => {
     <section className="py-16 bg-white" id="features">
       <div className="container px-4 md:px-6">
         <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold mb-4">Why Choose InterviewAI?</h2>
+          <h2 className="text-3xl font-bold mb-4">Why Choose TechPrep?</h2>
           <p className="text-gray-500 max-w-3xl mx-auto">
             Our platform offers everything you need to prepare for your next job interview.
           </p>

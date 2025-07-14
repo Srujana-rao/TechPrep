@@ -36,7 +36,7 @@ export const Navbar = ({ isAuthenticated }: NavbarProps = {}) => {
       <div className="container flex justify-between items-center py-4">
         <Link to="/" className="flex items-center space-x-2">
           <Mic className="h-6 w-6 text-interview-primary" />
-          <span className="text-xl font-bold text-interview-primary">InterviewAI</span>
+          <span className="text-xl font-bold text-interview-primary">TechPrep</span>
         </Link>
 
         {/* Desktop Navigation */}

@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Bell } from 'lucide-react';
+import { Calendar, Clock, Bell, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from "@/hooks/use-toast";
 import {
@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { AddInterviewDialog } from './add-interview-dialog';
 
 interface UpcomingInterview {
   id: string;
@@ -39,6 +40,20 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
   const [reminderOpen, setReminderOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<UpcomingInterview | null>(null);
   const [reminderTime, setReminderTime] = useState<string>("15");
+  const [addInterviewOpen, setAddInterviewOpen] = useState(false);
+  const [userInterviews, setUserInterviews] = useState<UpcomingInterview[]>([]);
+
+  // Load user interviews from localStorage on component mount
+  useEffect(() => {
+    const storedInterviews = localStorage.getItem('upcomingInterviews');
+    if (storedInterviews) {
+      try {
+        setUserInterviews(JSON.parse(storedInterviews));
+      } catch (error) {
+        console.error('Error loading upcoming interviews:', error);
+      }
+    }
+  }, []);
 
   // Function to calculate days remaining and return appropriate styling
   const getDaysRemainingInfo = (interviewDate: Date | string) => {
@@ -94,6 +109,20 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
       description: reminderMessage,
     });
   };
+
+  const handleAddInterview = (newInterview: UpcomingInterview) => {
+    const updatedInterviews = [...userInterviews, newInterview];
+    setUserInterviews(updatedInterviews);
+    localStorage.setItem('upcomingInterviews', JSON.stringify(updatedInterviews));
+  };
+
+  const handleViewCalendar = () => {
+    // Open calendar view dialog or navigate to calendar page
+    toast({
+      title: "Calendar View",
+      description: "Calendar view feature coming soon!",
+    });
+  };
   
   // Generate sample upcoming interviews if none provided
   const sampleInterviews: UpcomingInterview[] = [
@@ -126,16 +155,22 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
     }
   ];
   
-  const displayInterviews = interviews.length > 0 ? interviews : sampleInterviews;
+  const displayInterviews = userInterviews.length > 0 ? userInterviews : interviews.length > 0 ? interviews : sampleInterviews;
   
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Upcoming Interviews</h2>
-        <Button variant="outline" size="sm">
-          <Calendar className="mr-2 h-4 w-4" />
-          View Calendar
-        </Button>
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm" onClick={() => setAddInterviewOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Interview
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleViewCalendar}>
+            <Calendar className="mr-2 h-4 w-4" />
+            View Calendar
+          </Button>
+        </div>
       </div>
       
       <div className="space-y-4">
@@ -266,6 +301,13 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Interview Dialog */}
+      <AddInterviewDialog
+        open={addInterviewOpen}
+        onOpenChange={setAddInterviewOpen}
+        onAddInterview={handleAddInterview}
+      />
     </div>
   );
 };

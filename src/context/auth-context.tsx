@@ -235,7 +235,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Success message - user is auto-confirmed
         toast({
           title: 'Account created',
-          description: `Welcome to InterviewAI, ${name}!`,
+          description: `Welcome to TechPrep, ${name}!`,
         });
         
         // Navigate to dashboard

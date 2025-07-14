@@ -10,10 +10,10 @@ export const HeroSection = () => {
           <div className="flex flex-col justify-center space-y-4">
             <div className="space-y-2">
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-                Master Your Next Interview with AI
+                Master Your Next Interview with TechPrep
               </h1>
               <p className="max-w-[600px] text-gray-500 md:text-xl">
-                Practice with realistic AI-powered mock interviews tailored to your industry and role. Receive instant feedback to improve your skills.
+                Practice with realistic mock interviews tailored to your industry and role. Receive instant feedback to improve your skills.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 min-[400px]:flex-row">

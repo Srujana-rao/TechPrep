@@ -40,7 +40,7 @@ const Login = () => {
       <main className="flex-grow flex items-center justify-center py-12">
         <div className="w-full max-w-md px-4">
           <div className="text-center mb-8">
-            <h1 className="text-2xl font-bold">Welcome to InterviewAI</h1>
+            <h1 className="text-2xl font-bold">Welcome to TechPrep</h1>
             <p className="text-gray-500 mt-2">Sign in or create an account to continue</p>
           </div>
           

@@ -9,7 +9,7 @@ import { BarChart2, MessagesSquare, ScrollText, FileText, Download, Share } from
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { generatePdfReport } from '@/services/ai-interview-service';
+import { generatePdfReport } from '@/utils/pdf-generator';
 
 const ResultsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -337,17 +337,20 @@ const ResultsPage = () => {
       // Use the dedicated PDF generator from the service
       if (generatePdfReport) {
         const reportData = {
-          ...interviewData,
-          results: {
-            ...interviewData?.results,
-            overallScore: resultData.overallScore,
-            strengths: resultData.strengths,
-            improvements: resultData.improvements,
-            conversation: resultData.transcript
-          },
-          date: new Date(),
-          role: resultData.role,
-          duration: resultData.duration
+          id: id || 'unknown',
+          title: resultData.title,
+          date: new Date(completedAt).toISOString(),
+          position: resultData.role,
+          questionsAndAnswers: resultData.transcript.map((item: any) => ({
+            question: item.speaker === 'interviewer' ? item.text : '',
+            answer: item.speaker === 'user' ? item.text : '',
+            feedback: item.feedback || undefined,
+            score: undefined
+          })).filter((qa: any) => qa.question && qa.answer),
+          overallFeedback: `Your overall performance was ${resultData.overallScore >= 8 ? 'excellent' : resultData.overallScore >= 6 ? 'good' : 'satisfactory'}.`,
+          overallScore: resultData.overallScore,
+          strengths: resultData.strengths,
+          areasForImprovement: resultData.improvements
         };
         
         generatePdfReport(reportData);

@@ -67,9 +67,9 @@ const Index = () => {
           <div className="container px-4 md:px-6">
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
               <div>
-                <h3 className="text-lg font-semibold mb-4">InterviewAI</h3>
+                <h3 className="text-lg font-semibold mb-4">TechPrep</h3>
                 <p className="text-gray-500">
-                  AI-powered mock interviews to help you land your dream job.
+                  Practice mock interviews to help you land your dream job.
                 </p>
               </div>
               <div>
@@ -95,7 +95,7 @@ const Index = () => {
               </div>
             </div>
             <div className="border-t mt-12 pt-6 text-center text-gray-500">
-              <p>&copy; {new Date().getFullYear()} InterviewAI. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} TechPrep. All rights reserved.</p>
             </div>
           </div>
         </footer>
