@@ -54,7 +54,7 @@ const Index = () => {
           <div className="container px-4 md:px-6 text-center">
             <h2 className="text-3xl font-bold mb-4">Ready to Ace Your Next Interview?</h2>
             <p className="max-w-2xl mx-auto mb-8">
-              Join thousands of job seekers who have improved their interview skills with our AI-powered platform.
+              Join thousands of job seekers who have improved their interview skills with our platform.
             </p>
             <Button asChild size="lg" variant="secondary">
               <a href="/signup">Get Started Now</a>

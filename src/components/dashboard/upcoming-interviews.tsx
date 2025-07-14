@@ -117,11 +117,34 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
   };
 
   const handleViewCalendar = () => {
-    // Open calendar view dialog or navigate to calendar page
-    toast({
-      title: "Calendar View",
-      description: "Calendar view feature coming soon!",
-    });
+    // Create a simple calendar view showing all upcoming interviews
+    const calendarData = displayInterviews.map(interview => {
+      const date = typeof interview.date === 'string' ? new Date(interview.date) : interview.date;
+      return {
+        title: interview.title,
+        date: format(date, 'yyyy-MM-dd'),
+        time: interview.time || 'TBD',
+        type: interview.type
+      };
+    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    const calendarText = calendarData.map(item => 
+      `${item.date} at ${item.time} - ${item.title} (${item.type})`
+    ).join('\n');
+
+    // For now, show the calendar data in a toast with copy option
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(calendarText);
+      toast({
+        title: "Calendar Data Copied",
+        description: "Your interview schedule has been copied to clipboard. You can paste it into your calendar app.",
+      });
+    } else {
+      toast({
+        title: "Upcoming Interviews",
+        description: `You have ${calendarData.length} upcoming interviews scheduled.`,
+      });
+    }
   };
   
   // Generate sample upcoming interviews if none provided

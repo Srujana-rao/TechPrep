@@ -101,9 +101,10 @@ const enhancedImprovements = {
 };
 
 // Function to generate PDF report from interview results
-export const generatePdf = (result: InterviewResult): void => {
-  // Create a new jsPDF instance
-  const doc = new jsPDF();
+export const generatePdfReport = (result: InterviewResult): void => {
+  try {
+    // Create a new jsPDF instance
+    const doc = new jsPDF();
   
   // Set initial y position for content
   let lastY = 20;
@@ -492,7 +493,11 @@ export const generatePdf = (result: InterviewResult): void => {
       alert('Could not download the PDF. Please try again or use a different browser.');
     }
   }
+  } catch (error) {
+    console.error('Error in generatePdfReport:', error);
+    throw error;
+  }
 };
 
-// Export generatePdf as generatePdfReport for compatibility
-export const generatePdfReport = generatePdf;
+// Alternative export name for backward compatibility
+export const generatePdf = generatePdfReport;

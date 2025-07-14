@@ -156,7 +156,7 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold">Dashboard</h1>
-            <p className="text-gray-500 mt-1">Start a new AI-powered interview practice session</p>
+            <p className="text-gray-500 mt-1">Start a new interview practice session and improve your skills</p>
           </div>
           <Button 
             onClick={handleStartNewInterview}
@@ -173,7 +173,7 @@ const Dashboard = () => {
               Welcome, {currentUser?.email?.split('@')[0] || 'User'}!
             </h2>
             <p className="text-gray-700">
-              Practice your interview skills with our AI-powered mock interview system. 
+              Practice your interview skills with our mock interview system. 
               Get personalized feedback and improve your performance with each session.
             </p>
           </CardContent>
@@ -219,14 +219,14 @@ const Dashboard = () => {
         </div>
 
         {/* Two-column layout for Upcoming Interviews and Interview History */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
           {/* Upcoming Interviews Section */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-1">
             <UpcomingInterviews />
           </div>
           
           {/* Interview History Section */}
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2">
             <h2 className="text-xl font-semibold mb-4">Your Interview History</h2>
             {isLoading ? (
               <div className="text-center py-8">Loading your interviews...</div>
