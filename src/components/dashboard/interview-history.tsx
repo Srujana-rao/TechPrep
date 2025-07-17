@@ -62,23 +62,54 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
     }
   };
 
-  const handleShare = (interview: Interview) => {
-    // Create shareable link
-    const shareUrl = `${window.location.origin}/results/${interview.id}`;
-    
-    // Check if the Web Share API is supported
-    if (navigator.share) {
-      navigator.share({
-        title: `Interview Results: ${interview.title}`,
-        text: `Check out my interview results for ${interview.title}`,
-        url: shareUrl,
-      }).catch(error => {
-        console.log('Error sharing:', error);
-        // Fallback if sharing fails
-        copyToClipboard(shareUrl);
+  const handleShare = async (interview: Interview) => {
+    if (!interview || !interview.results) {
+      toast({
+        title: "Cannot share",
+        description: "Interview results are not available for sharing.",
+        variant: "destructive"
       });
-    } else {
-      // Fallback for browsers that don't support Web Share API
+      return;
+    }
+
+    try {
+      // Generate PDF blob for sharing
+      const reportData = {
+        id: interview.id,
+        title: interview.title,
+        date: interview.date,
+        position: interview.position || interview.role,
+        questionsAndAnswers: interview.results.conversation
+          ? interview.results.conversation
+              .filter(item => item.question || item.answer)
+              .map(item => ({
+                question: item.question || '',
+                answer: item.answer || '',
+                feedback: item.feedback || '',
+                score: item.quality === 'good' ? 8 : item.quality === 'fair' ? 6 : 4
+              }))
+          : [],
+        overallScore: interview.score || interview.results.overallScore,
+        strengths: interview.results.strengths || [],
+        areasForImprovement: interview.results.improvements || []
+      };
+
+      // For now, share the URL since PDF blob sharing is complex
+      const shareUrl = `${window.location.origin}/results/${interview.id}`;
+      
+      if (navigator.share) {
+        await navigator.share({
+          title: `Interview Results: ${interview.title}`,
+          text: `Check out my interview results for ${interview.title}`,
+          url: shareUrl,
+        });
+      } else {
+        copyToClipboard(shareUrl);
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // Fallback to URL sharing
+      const shareUrl = `${window.location.origin}/results/${interview.id}`;
       copyToClipboard(shareUrl);
     }
   };
@@ -99,7 +130,7 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
     });
   };
 
-  const handleDownloadPdf = (interview: Interview) => {
+  const handleDownloadPdf = async (interview: Interview) => {
     if (!interview || !interview.results) {
       toast({
         title: "Cannot generate report",
@@ -130,11 +161,12 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
         areasForImprovement: interview.results.improvements || []
       };
 
-      generatePdfReport(reportData);
+      // Call the PDF generator which should handle the download
+      await generatePdfReport(reportData);
       
       toast({
-        title: "PDF Generated",
-        description: "Your interview report has been generated and downloaded.",
+        title: "PDF Downloaded",
+        description: "Your interview report has been successfully downloaded.",
       });
     } catch (error) {
       console.error("Error generating PDF:", error);

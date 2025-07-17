@@ -147,7 +147,20 @@ const Dashboard = () => {
   // Calculate metrics based on user-specific interviews
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;
-  const upcomingInterviews = 3; // Example value, would be actual scheduled interviews in a real app
+  // Get actual upcoming interviews count from localStorage
+  const getUpcomingInterviewsCount = () => {
+    try {
+      const storedInterviews = localStorage.getItem('upcomingInterviews');
+      if (storedInterviews) {
+        const parsed = JSON.parse(storedInterviews);
+        return Array.isArray(parsed) ? parsed.length : 0;
+      }
+    } catch (error) {
+      console.error('Error reading upcoming interviews:', error);
+    }
+    return 0;
+  };
+  const upcomingInterviews = getUpcomingInterviewsCount();
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

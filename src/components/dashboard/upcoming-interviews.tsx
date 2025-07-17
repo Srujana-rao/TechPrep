@@ -116,36 +116,6 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
     localStorage.setItem('upcomingInterviews', JSON.stringify(updatedInterviews));
   };
 
-  const handleViewCalendar = () => {
-    // Create a simple calendar view showing all upcoming interviews
-    const calendarData = displayInterviews.map(interview => {
-      const date = typeof interview.date === 'string' ? new Date(interview.date) : interview.date;
-      return {
-        title: interview.title,
-        date: format(date, 'yyyy-MM-dd'),
-        time: interview.time || 'TBD',
-        type: interview.type
-      };
-    }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    const calendarText = calendarData.map(item => 
-      `${item.date} at ${item.time} - ${item.title} (${item.type})`
-    ).join('\n');
-
-    // For now, show the calendar data in a toast with copy option
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(calendarText);
-      toast({
-        title: "Calendar Data Copied",
-        description: "Your interview schedule has been copied to clipboard. You can paste it into your calendar app.",
-      });
-    } else {
-      toast({
-        title: "Upcoming Interviews",
-        description: `You have ${calendarData.length} upcoming interviews scheduled.`,
-      });
-    }
-  };
   
   // Generate sample upcoming interviews if none provided
   const sampleInterviews: UpcomingInterview[] = [
@@ -184,16 +154,10 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold">Upcoming Interviews</h2>
-        <div className="flex space-x-2">
-          <Button variant="outline" size="sm" onClick={() => setAddInterviewOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Interview
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleViewCalendar}>
-            <Calendar className="mr-2 h-4 w-4" />
-            View Calendar
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={() => setAddInterviewOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Interview
+        </Button>
       </div>
       
       <div className="space-y-4">
