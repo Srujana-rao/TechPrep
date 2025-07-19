@@ -4,7 +4,8 @@ import { format, addDays, differenceInDays } from 'date-fns';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Bell, Plus } from 'lucide-react';
+import { Calendar, Clock, Bell, Plus, Trash2 } from 'lucide-react';
+import { useAuth } from '@/context/auth-context';
 import { Link } from 'react-router-dom';
 import { toast } from "@/hooks/use-toast";
 import {
@@ -37,15 +38,22 @@ interface UpcomingInterviewsProps {
 }
 
 export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps) => {
+  const { currentUser } = useAuth();
   const [reminderOpen, setReminderOpen] = useState(false);
   const [selectedInterview, setSelectedInterview] = useState<UpcomingInterview | null>(null);
   const [reminderTime, setReminderTime] = useState<string>("15");
   const [addInterviewOpen, setAddInterviewOpen] = useState(false);
   const [userInterviews, setUserInterviews] = useState<UpcomingInterview[]>([]);
 
-  // Load user interviews from localStorage on component mount
+  // Load user-specific interviews from localStorage on component mount
   useEffect(() => {
-    const storedInterviews = localStorage.getItem('upcomingInterviews');
+    if (!currentUser) {
+      setUserInterviews([]);
+      return;
+    }
+    
+    const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
+    const storedInterviews = localStorage.getItem(userSpecificKey);
     if (storedInterviews) {
       try {
         setUserInterviews(JSON.parse(storedInterviews));
@@ -53,7 +61,7 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
         console.error('Error loading upcoming interviews:', error);
       }
     }
-  }, []);
+  }, [currentUser]);
 
   // Function to calculate days remaining and return appropriate styling
   const getDaysRemainingInfo = (interviewDate: Date | string) => {
@@ -111,9 +119,28 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
   };
 
   const handleAddInterview = (newInterview: UpcomingInterview) => {
+    if (!currentUser) return;
+    
     const updatedInterviews = [...userInterviews, newInterview];
     setUserInterviews(updatedInterviews);
-    localStorage.setItem('upcomingInterviews', JSON.stringify(updatedInterviews));
+    
+    const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
+    localStorage.setItem(userSpecificKey, JSON.stringify(updatedInterviews));
+  };
+
+  const handleDeleteInterview = (interviewId: string) => {
+    if (!currentUser) return;
+    
+    const updatedInterviews = userInterviews.filter(interview => interview.id !== interviewId);
+    setUserInterviews(updatedInterviews);
+    
+    const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
+    localStorage.setItem(userSpecificKey, JSON.stringify(updatedInterviews));
+    
+    toast({
+      title: "Interview deleted",
+      description: "The upcoming interview has been removed.",
+    });
   };
 
   
@@ -171,12 +198,27 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
             <Card key={interview.id} className="overflow-hidden">
               <CardHeader className="pb-2">
                 <div className="flex justify-between">
-                  <CardTitle className="text-lg">{interview.title}</CardTitle>
-                  <Badge variant={badgeVariant} className={textColor}>
-                    {message}
-                  </Badge>
+                  <div className="flex justify-between items-start w-full">
+                    <div>
+                      <CardTitle className="text-lg">{interview.title}</CardTitle>
+                      <CardDescription>{interview.role}</CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={badgeVariant} className={textColor}>
+                        {message}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-gray-500 hover:text-red-500"
+                        onClick={() => handleDeleteInterview(interview.id)}
+                        title="Delete Interview"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <CardDescription>{interview.role}</CardDescription>
               </CardHeader>
               
               <CardContent className="pb-2">

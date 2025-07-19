@@ -147,10 +147,13 @@ const Dashboard = () => {
   // Calculate metrics based on user-specific interviews
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;
-  // Get actual upcoming interviews count from localStorage
+  // Get actual upcoming interviews count from user-specific localStorage
   const getUpcomingInterviewsCount = () => {
+    if (!currentUser) return 0;
+    
     try {
-      const storedInterviews = localStorage.getItem('upcomingInterviews');
+      const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
+      const storedInterviews = localStorage.getItem(userSpecificKey);
       if (storedInterviews) {
         const parsed = JSON.parse(storedInterviews);
         return Array.isArray(parsed) ? parsed.length : 0;

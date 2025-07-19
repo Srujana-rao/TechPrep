@@ -689,9 +689,9 @@ const InterviewPage = () => {
                 <Card>
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-2 mb-2">
-                      <div className="w-8 h-8 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
-                        AI
-                      </div>
+                       <div className="w-8 h-8 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
+                         TI
+                       </div>
                       <h3 className="font-medium">Current Question:</h3>
                       {isSpeaking && (
                         <span className="text-xs bg-interview-primary/20 text-interview-primary px-2 py-1 rounded-md animate-pulse">
@@ -773,10 +773,10 @@ const InterviewPage = () => {
                             : 'bg-interview-primary text-white'
                         }`}
                       >
-                        <div className="flex items-center space-x-2 mb-1">
-                          <span className="font-semibold text-sm">
-                            {message.speaker === 'ai' ? 'AI Interviewer' : 'You'}
-                          </span>
+                         <div className="flex items-center space-x-2 mb-1">
+                           <span className="font-semibold text-sm">
+                             {message.speaker === 'ai' ? 'The Interviewer' : 'You'}
+                           </span>
                           {message.speaker === 'ai' && index === conversation.length - 1 && isSpeaking && (
                             <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full animate-pulse">
                               Speaking

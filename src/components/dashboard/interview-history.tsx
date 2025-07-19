@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, BarChart, Trash2, Share, Download } from 'lucide-react';
+import { Calendar, Clock, BarChart, Trash2, Share } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast } from "@/hooks/use-toast";
-import { generatePdfReport } from '@/utils/pdf-generator';
+
 import { InterviewResult } from '@/types/interview';
 
 interface Interview {
@@ -130,53 +130,6 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
     });
   };
 
-  const handleDownloadPdf = async (interview: Interview) => {
-    if (!interview || !interview.results) {
-      toast({
-        title: "Cannot generate report",
-        description: "Interview results are not available.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const reportData = {
-        id: interview.id,
-        title: interview.title,
-        date: interview.date,
-        position: interview.position || interview.role,
-        questionsAndAnswers: interview.results.conversation
-          ? interview.results.conversation
-              .filter(item => item.question || item.answer)
-              .map(item => ({
-                question: item.question || '',
-                answer: item.answer || '',
-                feedback: item.feedback || '',
-                score: item.quality === 'good' ? 8 : item.quality === 'fair' ? 6 : 4
-              }))
-          : [],
-        overallScore: interview.score || interview.results.overallScore,
-        strengths: interview.results.strengths || [],
-        areasForImprovement: interview.results.improvements || []
-      };
-
-      // Call the PDF generator which should handle the download
-      await generatePdfReport(reportData);
-      
-      toast({
-        title: "PDF Downloaded",
-        description: "Your interview report has been successfully downloaded.",
-      });
-    } catch (error) {
-      console.error("Error generating PDF:", error);
-      toast({
-        title: "Error generating PDF",
-        description: "There was a problem creating your report. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
   if (interviews.length === 0) {
     return (
@@ -290,15 +243,6 @@ export const InterviewHistory = ({ interviews, onDeleteInterview }: InterviewHis
                   title="Share Results"
                 >
                   <Share className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-9 w-9" 
-                  onClick={() => handleDownloadPdf(interview)}
-                  title="Download PDF Report"
-                >
-                  <Download className="h-4 w-4" />
                 </Button>
               </>
             ) : (

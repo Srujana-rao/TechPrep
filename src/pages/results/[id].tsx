@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart } from '@/components/ui/bar-chart';
-import { BarChart2, MessagesSquare, ScrollText, FileText, Download, Share } from 'lucide-react';
+import { BarChart2, MessagesSquare, ScrollText, FileText, Share } from 'lucide-react';
 import { ButtonLink } from '@/components/ui/button-link';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { generatePdfReport } from '@/utils/pdf-generator';
+
 
 const ResultsPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -331,53 +331,6 @@ const ResultsPage = () => {
     }
   };
 
-  // Generate PDF report
-  const handleDownloadReport = () => {
-    try {
-      // Use the dedicated PDF generator from the service
-      if (generatePdfReport) {
-        const reportData = {
-          id: id || 'unknown',
-          title: resultData.title,
-          date: new Date(completedAt).toISOString(),
-          position: resultData.role,
-          questionsAndAnswers: resultData.transcript.map((item: any) => ({
-            question: item.speaker === 'interviewer' ? item.text : '',
-            answer: item.speaker === 'user' ? item.text : '',
-            feedback: item.feedback || undefined,
-            score: undefined
-          })).filter((qa: any) => qa.question && qa.answer),
-          overallFeedback: `Your overall performance was ${resultData.overallScore >= 8 ? 'excellent' : resultData.overallScore >= 6 ? 'good' : 'satisfactory'}.`,
-          overallScore: resultData.overallScore,
-          strengths: resultData.strengths,
-          areasForImprovement: resultData.improvements
-        };
-        
-        generatePdfReport(reportData);
-        
-        toast({
-          title: "Report Downloaded",
-          description: "Your interview report has been downloaded as a PDF file.",
-          duration: 3000,
-        });
-      } else {
-        toast({
-          title: "Download Failed",
-          description: "PDF generator is not available. Please try again later.",
-          variant: "destructive",
-          duration: 5000,
-        });
-      }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      toast({
-        title: "Download Failed",
-        description: "There was an error generating your report. Please try again.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
-  };
 
   // Share interview results
   const handleShareResults = async () => {
@@ -441,13 +394,6 @@ const ResultsPage = () => {
             >
               <Share className="mr-2 h-4 w-4" />
               Share
-            </Button>
-            <Button 
-              className="bg-interview-primary hover:bg-interview-primary/90"
-              onClick={handleDownloadReport}
-            >
-              <Download className="mr-2 h-4 w-4" />
-              Download Report
             </Button>
           </div>
         </div>
@@ -597,14 +543,14 @@ const ResultsPage = () => {
                     resultData.transcript.map((entry, index) => (
                       <div key={index} className="pb-4 border-b border-gray-100 last:border-0">
                         <div className="flex items-center space-x-2 mb-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                            entry.speaker === 'ai' ? 'bg-interview-primary' : 'bg-interview-secondary'
-                          }`}>
-                            {entry.speaker === 'ai' ? 'AI' : 'You'}
-                          </div>
-                          <span className="font-medium">
-                            {entry.speaker === 'ai' ? 'AI Interviewer' : 'You'}
-                          </span>
+                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
+                             entry.speaker === 'ai' ? 'bg-interview-primary' : 'bg-interview-secondary'
+                           }`}>
+                             {entry.speaker === 'ai' ? 'TI' : 'You'}
+                           </div>
+                           <span className="font-medium">
+                             {entry.speaker === 'ai' ? 'The Interviewer' : 'You'}
+                           </span>
                         </div>
                         <p className="text-gray-700 mb-2">{entry.text}</p>
                         
