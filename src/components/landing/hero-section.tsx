@@ -31,10 +31,10 @@ export const HeroSection = () => {
                 <div className="bg-white/95 p-6 rounded-lg shadow-lg max-w-[80%]">
                   <div className="flex items-start space-x-4">
                     <div className="w-10 h-10 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
-                      AI
+                      TP
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm font-medium">AI Interviewer</p>
+                      <p className="text-sm font-medium">The Interviewer</p>
                       <p className="text-sm text-gray-600">Tell me about a challenging project you worked on and how you overcame obstacles.</p>
                     </div>
                   </div>

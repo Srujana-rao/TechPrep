@@ -207,15 +207,17 @@ export const UpcomingInterviews = ({ interviews = [] }: UpcomingInterviewsProps)
                       <Badge variant={badgeVariant} className={textColor}>
                         {message}
                       </Badge>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-gray-500 hover:text-red-500"
-                        onClick={() => handleDeleteInterview(interview.id)}
-                        title="Delete Interview"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {(userInterviews.length > 0 || !sampleInterviews.some(sample => sample.id === interview.id)) && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-500 hover:text-red-500"
+                          onClick={() => handleDeleteInterview(interview.id)}
+                          title="Delete Interview"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
