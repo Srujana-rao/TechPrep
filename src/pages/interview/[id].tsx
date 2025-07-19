@@ -7,6 +7,7 @@ import { Mic, Video, VideoOff, MicOff, Send, Loader, Volume2, Volume } from 'luc
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
+import { VoiceRecorder } from '@/components/ui/voice-recorder';
 
 const InterviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -701,35 +702,44 @@ const InterviewPage = () => {
                     </div>
                     <p className="text-gray-700">{currentQuestion || "Waiting for the interview to begin..."}</p>
                     
-                    <div className="mt-6">
-                      <div className="flex flex-col space-y-2">
-                        <div className="relative">
-                          <Textarea 
-                            className="min-h-[100px] p-3"
-                            placeholder="Type your response here..."
-                            value={userResponse}
-                            onChange={(e) => setUserResponse(e.target.value)}
-                            disabled={!isInProgress || isProcessing || interviewComplete}
-                          />
-                        </div>
-                        <Button 
-                          className="self-end bg-interview-primary hover:bg-interview-primary/90"
-                          disabled={!userResponse.trim() || isProcessing || interviewComplete}
-                          onClick={submitResponse}
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader className="h-4 w-4 mr-2 animate-spin" />
-                              Processing...
-                            </>
-                          ) : (
-                            <>
-                              <Send className="h-4 w-4 mr-2" />
-                              Send Response
-                            </>
-                          )}
-                        </Button>
-                      </div>
+                     <div className="mt-6">
+                       <div className="flex flex-col space-y-4">
+                         <div className="relative">
+                           <Textarea 
+                             className="min-h-[100px] p-3"
+                             placeholder="Type your response here or use voice recording below..."
+                             value={userResponse}
+                             onChange={(e) => setUserResponse(e.target.value)}
+                             disabled={!isInProgress || isProcessing || interviewComplete}
+                           />
+                         </div>
+                         
+                         {/* Voice Recorder Component */}
+                         <VoiceRecorder 
+                           onTranscriptChange={(transcript) => {
+                             setUserResponse(prev => prev + (prev ? ' ' : '') + transcript);
+                           }}
+                           className="border-0 shadow-none"
+                         />
+                         
+                         <Button 
+                           className="self-end bg-interview-primary hover:bg-interview-primary/90"
+                           disabled={!userResponse.trim() || isProcessing || interviewComplete}
+                           onClick={submitResponse}
+                         >
+                           {isProcessing ? (
+                             <>
+                               <Loader className="h-4 w-4 mr-2 animate-spin" />
+                               Processing...
+                             </>
+                           ) : (
+                             <>
+                               <Send className="h-4 w-4 mr-2" />
+                               Send Response
+                             </>
+                           )}
+                         </Button>
+                       </div>
                       {feedback && (
                         <div className="mt-4 p-4 bg-gray-50 rounded-md">
                           <p className="text-sm text-gray-600">{feedback}</p>
