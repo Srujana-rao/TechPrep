@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { VoiceRecorder } from '@/components/ui/voice-recorder';
+import { Clock } from 'lucide-react';
 
 const InterviewPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -35,6 +36,8 @@ const InterviewPage = () => {
   const [userResponses, setUserResponses] = useState<string[]>([]);
   const [interviewData, setInterviewData] = useState<any>(null);
   const [customQuestions, setCustomQuestions] = useState<string[]>([]);
+  const [timeRemaining, setTimeRemaining] = useState(120); // 2 minutes in seconds
+  const [timerActive, setTimerActive] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -284,12 +287,59 @@ const InterviewPage = () => {
   useEffect(() => {
     if (currentQuestion) {
       setUserResponse('');
+      setTimeRemaining(120); // Reset to 2 minutes
+      setTimerActive(true);
     }
   }, [currentQuestion]);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (!timerActive || timeRemaining <= 0 || interviewComplete) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          setTimerActive(false);
+          // Auto-submit when time is up
+          if (userResponse.trim()) {
+            submitResponse();
+          } else {
+            // Move to next question even if no response
+            setTimeout(() => {
+              const nextQuestionIndex = questionsAsked;
+              if (nextQuestionIndex < Math.min(customQuestions.length, 5)) {
+                const nextQuestion = customQuestions[nextQuestionIndex] || "Tell me about a challenging project you worked on.";
+                setCurrentQuestion(nextQuestion);
+                setConversation(prev => [...prev, { speaker: 'ai', text: "Time's up! Let's move to the next question." }]);
+                setConversation(prev => [...prev, { speaker: 'ai', text: nextQuestion }]);
+                setQuestionsAsked(prev => prev + 1);
+              } else {
+                endInterview();
+              }
+            }, 1000);
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timerActive, timeRemaining, userResponse, questionsAsked, customQuestions, interviewComplete]);
+
+  // Format time as mm:ss
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   // Submit response
   const submitResponse = () => {
     if (!userResponse.trim()) return;
+    
+    // Stop the timer when user submits manually
+    setTimerActive(false);
     
     // Add user response to conversation
     const currentQuestionIndex = questionsAsked;
@@ -689,15 +739,29 @@ const InterviewPage = () => {
               <div className="mt-4">
                 <Card>
                   <CardContent className="p-4">
-                    <div className="flex items-center space-x-2 mb-2">
-                       <div className="w-8 h-8 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
-                         TI
-                       </div>
-                      <h3 className="font-medium">Current Question:</h3>
-                      {isSpeaking && (
-                        <span className="text-xs bg-interview-primary/20 text-interview-primary px-2 py-1 rounded-md animate-pulse">
-                          Speaking...
-                        </span>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-8 h-8 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
+                          TI
+                        </div>
+                        <h3 className="font-medium">Current Question:</h3>
+                        {isSpeaking && (
+                          <span className="text-xs bg-interview-primary/20 text-interview-primary px-2 py-1 rounded-md animate-pulse">
+                            Speaking...
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Timer Display */}
+                      {timerActive && (
+                        <div className={`flex items-center space-x-2 px-3 py-1 rounded-md ${
+                          timeRemaining <= 30 ? 'bg-red-100 text-red-700' : 
+                          timeRemaining <= 60 ? 'bg-yellow-100 text-yellow-700' : 
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          <Clock className="h-4 w-4" />
+                          <span className="font-mono font-semibold">{formatTime(timeRemaining)}</span>
+                        </div>
                       )}
                     </div>
                     <p className="text-gray-700">{currentQuestion || "Waiting for the interview to begin..."}</p>
@@ -714,13 +778,15 @@ const InterviewPage = () => {
                            />
                          </div>
                          
-                         {/* Voice Recorder Component */}
-                         <VoiceRecorder 
-                           onTranscriptChange={(transcript) => {
-                             setUserResponse(prev => prev + (prev ? ' ' : '') + transcript);
-                           }}
-                           className="border-0 shadow-none"
-                         />
+                          {/* Voice Recorder Component */}
+                          <VoiceRecorder 
+                            onTranscriptChange={(transcript) => {
+                              if (transcript) {
+                                setUserResponse(transcript);
+                              }
+                            }}
+                            className="border-0 shadow-none"
+                          />
                          
                          <Button 
                            className="self-end bg-interview-primary hover:bg-interview-primary/90"

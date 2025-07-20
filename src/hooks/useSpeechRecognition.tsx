@@ -45,18 +45,18 @@ const useSpeechRecognition = () => {
 
     recognition.onresult = (event: any) => {
       let finalTranscript = '';
-      let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0].transcript;
-        } else {
-          interimTranscript += result[0].transcript;
         }
       }
 
-      setTranscript(finalTranscript + interimTranscript);
+      // Only update with final results to avoid repetition
+      if (finalTranscript) {
+        setTranscript(prev => prev + (prev ? ' ' : '') + finalTranscript);
+      }
     };
 
     recognition.onend = () => {

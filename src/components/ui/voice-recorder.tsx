@@ -25,8 +25,13 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
   } = useSpeechRecognition();
 
   React.useEffect(() => {
-    if (onTranscriptChange) {
-      onTranscriptChange(transcript);
+    if (onTranscriptChange && transcript) {
+      // Only send final transcript, not interim results
+      const lines = transcript.split('\n');
+      const lastLine = lines[lines.length - 1].trim();
+      if (lastLine) {
+        onTranscriptChange(lastLine);
+      }
     }
   }, [transcript, onTranscriptChange]);
 
