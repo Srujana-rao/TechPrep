@@ -45,17 +45,28 @@ const useSpeechRecognition = () => {
 
     recognition.onresult = (event: any) => {
       let finalTranscript = '';
+      let interimTranscript = '';
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         if (result.isFinal) {
           finalTranscript += result[0].transcript;
+        } else {
+          interimTranscript += result[0].transcript;
         }
       }
 
-      // Only update with final results to avoid repetition
+      // Update with both final and interim results for real-time feedback
       if (finalTranscript) {
-        setTranscript(prev => prev + (prev ? ' ' : '') + finalTranscript);
+        setTranscript(prev => {
+          const currentFinal = prev.split('[INTERIM]')[0];
+          return currentFinal + (currentFinal ? ' ' : '') + finalTranscript + (interimTranscript ? '[INTERIM]' + interimTranscript : '');
+        });
+      } else if (interimTranscript) {
+        setTranscript(prev => {
+          const currentFinal = prev.split('[INTERIM]')[0];
+          return currentFinal + '[INTERIM]' + interimTranscript;
+        });
       }
     };
 
@@ -82,9 +93,13 @@ const useSpeechRecognition = () => {
     }
 
     if (recognitionRef.current && !isListening) {
-      setTranscript('');
       setError(null);
-      recognitionRef.current.start();
+      try {
+        recognitionRef.current.start();
+      } catch (error) {
+        console.error('Error starting speech recognition:', error);
+        setError('Failed to start speech recognition');
+      }
     }
   };
 

@@ -148,22 +148,27 @@ const Dashboard = () => {
   const completedInterviews = interviews.filter(interview => interview.completed).length;
   const pendingInterviews = interviews.filter(interview => !interview.completed).length;
   // Get actual upcoming interviews count from user-specific localStorage
-  const getUpcomingInterviewsCount = () => {
-    if (!currentUser) return 0;
-    
-    try {
-      const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
-      const storedInterviews = localStorage.getItem(userSpecificKey);
-      if (storedInterviews) {
-        const parsed = JSON.parse(storedInterviews);
-        return Array.isArray(parsed) ? parsed.length : 0;
+  const [upcomingInterviews, setUpcomingInterviews] = useState(0);
+  
+  useEffect(() => {
+    const getUpcomingInterviewsCount = () => {
+      if (!currentUser) return 0;
+      
+      try {
+        const userSpecificKey = `upcomingInterviews_${currentUser.id}`;
+        const storedInterviews = localStorage.getItem(userSpecificKey);
+        if (storedInterviews) {
+          const parsed = JSON.parse(storedInterviews);
+          return Array.isArray(parsed) ? parsed.length : 0;
+        }
+      } catch (error) {
+        console.error('Error reading upcoming interviews:', error);
       }
-    } catch (error) {
-      console.error('Error reading upcoming interviews:', error);
-    }
-    return 0;
-  };
-  const upcomingInterviews = getUpcomingInterviewsCount();
+      return 0;
+    };
+    
+    setUpcomingInterviews(getUpcomingInterviewsCount());
+  }, [currentUser]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

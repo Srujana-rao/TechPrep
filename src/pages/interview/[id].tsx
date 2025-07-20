@@ -657,7 +657,7 @@ const InterviewPage = () => {
       
       <main className="flex-grow container px-4 py-8 md:px-6 flex flex-col">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">Interview Session</h1>
+          <h1 className="text-2xl font-bold">TP Interview Session</h1>
           <p className="text-gray-500">Your personalized interview is in progress</p>
         </div>
         
@@ -708,14 +708,6 @@ const InterviewPage = () => {
                 >
                   {isVideoEnabled ? <Video /> : <VideoOff />}
                 </Button>
-                <Button 
-                  variant="secondary" 
-                  size="icon"
-                  onClick={toggleAudio}
-                  className={isListening ? "bg-green-100" : ""}
-                >
-                  {getMicIcon()}
-                </Button>
                 
                 {isInProgress ? (
                   <Button 
@@ -742,7 +734,7 @@ const InterviewPage = () => {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-8 h-8 rounded-full bg-interview-primary flex items-center justify-center text-white font-bold">
-                          TI
+                          TP
                         </div>
                         <h3 className="font-medium">Current Question:</h3>
                         {isSpeaking && (
@@ -779,14 +771,16 @@ const InterviewPage = () => {
                          </div>
                          
                           {/* Voice Recorder Component */}
-                          <VoiceRecorder 
-                            onTranscriptChange={(transcript) => {
-                              if (transcript) {
-                                setUserResponse(transcript);
-                              }
-                            }}
-                            className="border-0 shadow-none"
-                          />
+                           <VoiceRecorder 
+                             onTranscriptChange={(transcript) => {
+                               if (transcript) {
+                                 // Clean up the transcript by removing interim markers
+                                 const cleanTranscript = transcript.replace('[INTERIM]', '').trim();
+                                 setUserResponse(cleanTranscript);
+                               }
+                             }}
+                             className="border-0 shadow-none"
+                           />
                          
                          <Button 
                            className="self-end bg-interview-primary hover:bg-interview-primary/90"

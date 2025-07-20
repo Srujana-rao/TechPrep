@@ -26,12 +26,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
 
   React.useEffect(() => {
     if (onTranscriptChange && transcript) {
-      // Only send final transcript, not interim results
-      const lines = transcript.split('\n');
-      const lastLine = lines[lines.length - 1].trim();
-      if (lastLine) {
-        onTranscriptChange(lastLine);
-      }
+      onTranscriptChange(transcript);
     }
   }, [transcript, onTranscriptChange]);
 
@@ -108,7 +103,7 @@ export const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Live Transcript:</h4>
             <div className="p-3 bg-gray-50 rounded-md border min-h-[100px] text-sm">
-              {transcript || 'Your speech will appear here...'}
+              {transcript.replace('[INTERIM]', '') || 'Your speech will appear here...'}
             </div>
           </div>
         )}
