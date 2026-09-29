@@ -110,7 +110,6 @@ http://localhost:5173
 <img width="1919" height="922" alt="Screenshot 2026-02-09 101355" src="https://github.com/user-attachments/assets/de418b2f-c340-408a-bfcf-f06ca79e9e7b" />
 <img width="1919" height="925" alt="Screenshot 2026-02-09 101431" src="https://github.com/user-attachments/assets/2b30bf0e-66af-43b2-ae42-dc059bb8e323" />
 
-### Performance Report
-<img width="1919" height="926" alt="Screenshot 2026-02-09 101322" src="https://github.com/user-attachments/assets/a31aa6a0-36e2-4c1e-90b5-aba79b64a208" />
+
 
 
